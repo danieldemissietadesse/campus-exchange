@@ -1,4 +1,3 @@
-// src/components/Auth.js
 'use client';
 
 import { useState } from 'react';
@@ -15,7 +14,6 @@ export default function Auth({ onAuth }) {
     e.preventDefault();
     setError('');
 
-    // Check if email is @wit.edu
     if (!email.endsWith('@wit.edu')) {
       setError('Please use your WIT email (@wit.edu)');
       return;
