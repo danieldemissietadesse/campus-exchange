@@ -15,21 +15,24 @@ import {
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Create a new listing
-export async function createListing(listingData, imageFile) {
+export async function createListing(listingData, imageFiles) {
   try {
-    let imageUrl = '';
+    let imageUrls = [];
     
-    // Upload image if provided
-    if (imageFile) {
-      const storageRef = ref(storage, `listings/${Date.now()}_${imageFile.name}`);
-      const snapshot = await uploadBytes(storageRef, imageFile);
-      imageUrl = await getDownloadURL(snapshot.ref);
+    // Upload images if provided
+    if (imageFiles && imageFiles.length > 0) {
+      for (const imageFile of imageFiles) {
+        const storageRef = ref(storage, `listings/${Date.now()}_${imageFile.name}`);
+        const snapshot = await uploadBytes(storageRef, imageFile);
+        const url = await getDownloadURL(snapshot.ref);
+        imageUrls.push(url);
+      }
     }
 
     // Add listing to Firestore
     const docRef = await addDoc(collection(db, 'listings'), {
       ...listingData,
-      imageUrl,
+      imageUrls,
       createdAt: serverTimestamp(),
       status: 'active'
     });
@@ -74,6 +77,56 @@ export async function deleteListing(listingId) {
     await deleteDoc(doc(db, 'listings', listingId));
   } catch (error) {
     console.error('Error deleting listing:', error);
+    throw error;
+  }
+}
+
+// Send a message
+export async function sendMessage(messageData) {
+  try {
+    const docRef = await addDoc(collection(db, 'messages'), {
+      ...messageData,
+      createdAt: serverTimestamp(),
+      read: false
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
+}
+
+// Get messages for a user
+export async function getMessages(userId) {
+  try {
+    const q = query(
+      collection(db, 'messages'),
+      where('recipientId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const messages = [];
+    
+    querySnapshot.forEach((doc) => {
+      messages.push({ id: doc.id, ...doc.data() });
+    });
+    
+    return messages;
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    throw error;
+  }
+}
+
+// Mark message as read
+export async function markMessageAsRead(messageId) {
+  try {
+    await updateDoc(doc(db, 'messages', messageId), {
+      read: true
+    });
+  } catch (error) {
+    console.error('Error marking message as read:', error);
     throw error;
   }
 }

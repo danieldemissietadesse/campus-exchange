@@ -113,7 +113,9 @@ export default function Auth({ onAuth }) {
       borderRadius: '8px',
       transition: 'all 0.2s',
       outline: 'none',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      color: '#000000', // Black text
+      backgroundColor: '#ffffff'
     },
     inputFocus: {
       borderColor: '#003366',
