@@ -96,20 +96,51 @@ export async function sendMessage(messageData) {
   }
 }
 
-// Get messages for a user
+// Get messages for a user (both sent and received)
 export async function getMessages(userId) {
   try {
-    const q = query(
+    // Get received messages
+    const receivedQuery = query(
       collection(db, 'messages'),
-      where('recipientId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('recipientId', '==', userId)
     );
     
-    const querySnapshot = await getDocs(q);
+    // Get sent messages
+    const sentQuery = query(
+      collection(db, 'messages'),
+      where('senderId', '==', userId)
+    );
+    
+    const [receivedSnapshot, sentSnapshot] = await Promise.all([
+      getDocs(receivedQuery),
+      getDocs(sentQuery)
+    ]);
+    
     const messages = [];
     
-    querySnapshot.forEach((doc) => {
-      messages.push({ id: doc.id, ...doc.data() });
+    // Add received messages with type
+    receivedSnapshot.forEach((doc) => {
+      messages.push({ 
+        id: doc.id, 
+        ...doc.data(), 
+        type: 'received' 
+      });
+    });
+    
+    // Add sent messages with type
+    sentSnapshot.forEach((doc) => {
+      messages.push({ 
+        id: doc.id, 
+        ...doc.data(), 
+        type: 'sent' 
+      });
+    });
+    
+    // Sort by createdAt (newest first)
+    messages.sort((a, b) => {
+      const aTime = a.createdAt?.seconds || 0;
+      const bTime = b.createdAt?.seconds || 0;
+      return bTime - aTime;
     });
     
     return messages;
