@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { auth } from './firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, sendEmailVerification, reload } from 'firebase/auth';
 import Auth from '@/components/Auth';
 import MessageConversation from '@/components/MessageConversation';
 import { createListing, getListings, deleteListing, sendMessage, getMessages, markMessageAsRead } from '@/lib/db';
@@ -10,7 +10,11 @@ import { createListing, getListings, deleteListing, sendMessage, getMessages, ma
 export default function Home() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [checkingVerification, setCheckingVerification] = useState(false);
   const [listings, setListings] = useState([]);
+  const [filteredListings, setFilteredListings] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [messages, setMessages] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -31,17 +35,30 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        loadListings();
-        loadMessages(user.uid);
+        // Always reload user to get latest verification status
+        await reload(user);
+        setUser(user);
+        
+        // Only load data if email is verified
+        if (user.emailVerified) {
+          loadListings();
+          loadMessages(user.uid);
+        }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
+
+  // Update filtered listings when listings or filters change
+  useEffect(() => {
+    filterListings(searchTerm, selectedCategory);
+  }, [listings]);
 
   const loadListings = async () => {
     try {
@@ -59,6 +76,275 @@ export default function Home() {
     } catch (error) {
       console.error('Error loading messages:', error);
     }
+  };
+
+  // Combined filter function
+  const filterListings = (searchTerm, category) => {
+    let filtered = listings;
+    
+    // Filter by search term if present
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(listing => {
+        return (
+          listing.title.toLowerCase().includes(searchLower) ||
+          listing.description.toLowerCase().includes(searchLower) ||
+          listing.category.toLowerCase().includes(searchLower) ||
+          listing.userEmail.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+    
+    // Filter by category if not "All"
+    if (category !== 'All') {
+      filtered = filtered.filter(listing => listing.category === category);
+    }
+    
+    setFilteredListings(filtered);
+  };
+
+  // Search handler function
+  const handleSearch = (term) => {
+    setSearchTerm(term);
+    filterListings(term, selectedCategory);
+  };
+
+  // Category selection handler
+  const handleCategorySelect = (category) => {
+    setSelectedCategory(category);
+    filterListings(searchTerm, category);
+  };
+
+  // Email Verification Screen Component
+  const EmailVerificationScreen = () => {
+    const [resendLoading, setResendLoading] = useState(false);
+    const [resendMessage, setResendMessage] = useState('');
+
+    const handleResendVerification = async () => {
+      setResendLoading(true);
+      setResendMessage('');
+      
+      try {
+        await sendEmailVerification(user, {
+          url: 'http://localhost:3001' // Add your app URL here
+        });
+        setResendMessage('Verification email sent! Please check your inbox.');
+      } catch (error) {
+        if (error.code === 'auth/too-many-requests') {
+          setResendMessage('Too many requests. Please wait a few minutes before trying again.');
+        } else {
+          setResendMessage('Error sending email. Please try again later.');
+        }
+      } finally {
+        setResendLoading(false);
+      }
+    };
+
+    const handleRefresh = async () => {
+      setCheckingVerification(true);
+      try {
+        // Force refresh the user's token to get updated email verification status
+        await user.reload();
+        const currentUser = auth.currentUser;
+        
+        if (currentUser && currentUser.emailVerified) {
+          // Refresh the page to reload everything with verified status
+          window.location.reload();
+        } else {
+          alert('Email not verified yet. Please check your inbox and click the verification link.');
+        }
+      } catch (error) {
+        console.error('Error checking verification:', error);
+        alert('Error checking verification status. Please try again.');
+      } finally {
+        setCheckingVerification(false);
+      }
+    };
+
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f3f4f6',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
+          maxWidth: '500px',
+          width: '100%',
+          padding: '3rem',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>📧</div>
+          <h2 style={{ 
+            fontSize: '1.75rem', 
+            fontWeight: 'bold', 
+            color: '#111827', 
+            marginBottom: '1rem' 
+          }}>
+            Verify Your Email
+          </h2>
+          
+          <p style={{ 
+            color: '#6b7280', 
+            marginBottom: '1.5rem',
+            lineHeight: '1.6'
+          }}>
+            We've sent a verification email to:
+          </p>
+          
+          <p style={{ 
+            fontWeight: '600', 
+            color: '#003366', 
+            marginBottom: '2rem',
+            fontSize: '1.125rem'
+          }}>
+            {user.email}
+          </p>
+          
+          <div style={{
+            backgroundColor: '#fef3c7',
+            border: '1px solid #fcd34d',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '2rem'
+          }}>
+            <p style={{ 
+              color: '#92400e', 
+              fontSize: '0.875rem',
+              margin: 0
+            }}>
+              ⚠️ You must verify your email before you can post or message on Campus Exchange.
+            </p>
+          </div>
+
+          <div style={{
+            backgroundColor: '#e0f2fe',
+            border: '1px solid #7dd3fc',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '2rem',
+            textAlign: 'left'
+          }}>
+            <p style={{ 
+              color: '#075985', 
+              fontSize: '0.875rem',
+              margin: 0,
+              fontWeight: '600',
+              marginBottom: '0.5rem'
+            }}>
+              💡 WIT Email Tip:
+            </p>
+            <p style={{ 
+              color: '#075985', 
+              fontSize: '0.875rem',
+              margin: 0,
+              lineHeight: '1.4'
+            }}>
+              If you see "This link is being scanned" in Outlook, wait a moment and click "Skip and go to link" when it appears. This is WIT's security system checking the link.
+            </p>
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '1rem',
+            marginBottom: '1.5rem'
+          }}>
+            <button
+              onClick={handleRefresh}
+              disabled={checkingVerification}
+              style={{
+                padding: '0.875rem',
+                backgroundColor: '#003366',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: checkingVerification ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: checkingVerification ? 0.6 : 1
+              }}
+              onMouseOver={(e) => {
+                if (!checkingVerification) {
+                  e.target.style.backgroundColor = '#002244';
+                }
+              }}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#003366'}
+            >
+              {checkingVerification ? 'Checking...' : "I've Verified My Email"}
+            </button>
+            
+            <button
+              onClick={handleResendVerification}
+              disabled={resendLoading}
+              style={{
+                padding: '0.875rem',
+                backgroundColor: 'white',
+                color: '#003366',
+                border: '2px solid #003366',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: '600',
+                cursor: resendLoading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                opacity: resendLoading ? 0.6 : 1
+              }}
+              onMouseOver={(e) => {
+                if (!resendLoading) {
+                  e.target.style.backgroundColor = '#f3f4f6';
+                }
+              }}
+              onMouseOut={(e) => e.target.style.backgroundColor = 'white'}
+            >
+              {resendLoading ? 'Sending...' : 'Resend Verification Email'}
+            </button>
+          </div>
+
+          {resendMessage && (
+            <p style={{
+              color: resendMessage.includes('sent') ? '#10b981' : '#ef4444',
+              fontSize: '0.875rem',
+              marginBottom: '1rem'
+            }}>
+              {resendMessage}
+            </p>
+          )}
+
+          <div style={{
+            borderTop: '1px solid #e5e7eb',
+            paddingTop: '1.5rem',
+            marginTop: '1.5rem'
+          }}>
+            <p style={{ 
+              color: '#6b7280', 
+              fontSize: '0.875rem',
+              marginBottom: '0.5rem'
+            }}>
+              Can't find the email? Check your spam/junk folder.
+            </p>
+            <button
+              onClick={() => auth.signOut()}
+              style={{
+                color: '#6b7280',
+                background: 'none',
+                border: 'none',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Sign out and try a different email
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Group messages by conversation (by listing and other user)
@@ -216,6 +502,11 @@ export default function Home() {
 
   if (!user) {
     return <Auth onAuth={() => window.location.reload()} />;
+  }
+
+  // Check email verification - strict check
+  if (user && !user.emailVerified) {
+    return <EmailVerificationScreen />;
   }
 
   const userListings = listings.filter(listing => listing.userId === user.uid);
@@ -634,7 +925,25 @@ export default function Home() {
         <div style={styles.headerContent}>
           <h1 style={styles.logo}>📦 Campus Exchange</h1>
           <div style={styles.userInfo}>
-            <span>{user.email}</span>
+            <span style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem' 
+            }}>
+              {user.email}
+              {user.emailVerified && (
+                <span style={{ 
+                  color: '#10b981', 
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}>
+                  <span style={{ fontSize: '1rem' }}>✓</span>
+                  Verified
+                </span>
+              )}
+            </span>
             <button 
               onClick={() => {
                 setShowMessages(!showMessages);
@@ -767,11 +1076,34 @@ export default function Home() {
             {/* Search Section */}
             <div style={styles.searchSection}>
               <div style={styles.searchBar}>
-                <input 
-                  type="text" 
-                  placeholder="Search for textbooks, furniture, electronics..."
-                  style={styles.searchInput}
-                />
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input 
+                    type="text" 
+                    placeholder="Search for textbooks, furniture, electronics..."
+                    style={styles.searchInput}
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => handleSearch('')}
+                      style={{
+                        position: 'absolute',
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        fontSize: '1.25rem',
+                        padding: '0.25rem'
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
                 <button 
                   onClick={() => setShowModal(true)}
                   style={{...styles.button, ...styles.primaryButton}}
@@ -781,20 +1113,202 @@ export default function Home() {
               </div>
               
               <div style={styles.categories}>
-                <div style={styles.categoryChip}>📚 All Categories</div>
-                <div style={styles.categoryChip}>📖 Textbooks</div>
-                <div style={styles.categoryChip}>💻 Electronics</div>
-                <div style={styles.categoryChip}>🪑 Furniture</div>
-                <div style={styles.categoryChip}>👕 Clothing</div>
-                <div style={styles.categoryChip}>🏠 Dorm Supplies</div>
+                <div 
+                  style={{
+                    ...styles.categoryChip,
+                    backgroundColor: selectedCategory === 'All' ? '#003366' : '#f3f4f6',
+                    color: selectedCategory === 'All' ? 'white' : '#374151',
+                    border: selectedCategory === 'All' ? '1px solid #003366' : '1px solid #e5e7eb'
+                  }}
+                  onClick={() => handleCategorySelect('All')}
+                  onMouseOver={(e) => {
+                    if (selectedCategory !== 'All') {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedCategory !== 'All') {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    }
+                  }}
+                >
+                  📚 All Categories
+                </div>
+                <div 
+                  style={{
+                    ...styles.categoryChip,
+                    backgroundColor: selectedCategory === 'Textbooks' ? '#003366' : '#f3f4f6',
+                    color: selectedCategory === 'Textbooks' ? 'white' : '#374151',
+                    border: selectedCategory === 'Textbooks' ? '1px solid #003366' : '1px solid #e5e7eb'
+                  }}
+                  onClick={() => handleCategorySelect('Textbooks')}
+                  onMouseOver={(e) => {
+                    if (selectedCategory !== 'Textbooks') {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedCategory !== 'Textbooks') {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    }
+                  }}
+                >
+                  📖 Textbooks
+                </div>
+                <div 
+                  style={{
+                    ...styles.categoryChip,
+                    backgroundColor: selectedCategory === 'Electronics' ? '#003366' : '#f3f4f6',
+                    color: selectedCategory === 'Electronics' ? 'white' : '#374151',
+                    border: selectedCategory === 'Electronics' ? '1px solid #003366' : '1px solid #e5e7eb'
+                  }}
+                  onClick={() => handleCategorySelect('Electronics')}
+                  onMouseOver={(e) => {
+                    if (selectedCategory !== 'Electronics') {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedCategory !== 'Electronics') {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    }
+                  }}
+                >
+                  💻 Electronics
+                </div>
+                <div 
+                  style={{
+                    ...styles.categoryChip,
+                    backgroundColor: selectedCategory === 'Furniture' ? '#003366' : '#f3f4f6',
+                    color: selectedCategory === 'Furniture' ? 'white' : '#374151',
+                    border: selectedCategory === 'Furniture' ? '1px solid #003366' : '1px solid #e5e7eb'
+                  }}
+                  onClick={() => handleCategorySelect('Furniture')}
+                  onMouseOver={(e) => {
+                    if (selectedCategory !== 'Furniture') {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedCategory !== 'Furniture') {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    }
+                  }}
+                >
+                  🪑 Furniture
+                </div>
+                <div 
+                  style={{
+                    ...styles.categoryChip,
+                    backgroundColor: selectedCategory === 'Clothing' ? '#003366' : '#f3f4f6',
+                    color: selectedCategory === 'Clothing' ? 'white' : '#374151',
+                    border: selectedCategory === 'Clothing' ? '1px solid #003366' : '1px solid #e5e7eb'
+                  }}
+                  onClick={() => handleCategorySelect('Clothing')}
+                  onMouseOver={(e) => {
+                    if (selectedCategory !== 'Clothing') {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedCategory !== 'Clothing') {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    }
+                  }}
+                >
+                  👕 Clothing
+                </div>
+                <div 
+                  style={{
+                    ...styles.categoryChip,
+                    backgroundColor: selectedCategory === 'Dorm Supplies' ? '#003366' : '#f3f4f6',
+                    color: selectedCategory === 'Dorm Supplies' ? 'white' : '#374151',
+                    border: selectedCategory === 'Dorm Supplies' ? '1px solid #003366' : '1px solid #e5e7eb'
+                  }}
+                  onClick={() => handleCategorySelect('Dorm Supplies')}
+                  onMouseOver={(e) => {
+                    if (selectedCategory !== 'Dorm Supplies') {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedCategory !== 'Dorm Supplies') {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    }
+                  }}
+                >
+                  🏠 Dorm Supplies
+                </div>
+                <div 
+                  style={{
+                    ...styles.categoryChip,
+                    backgroundColor: selectedCategory === 'Other' ? '#003366' : '#f3f4f6',
+                    color: selectedCategory === 'Other' ? 'white' : '#374151',
+                    border: selectedCategory === 'Other' ? '1px solid #003366' : '1px solid #e5e7eb'
+                  }}
+                  onClick={() => handleCategorySelect('Other')}
+                  onMouseOver={(e) => {
+                    if (selectedCategory !== 'Other') {
+                      e.currentTarget.style.backgroundColor = '#e5e7eb';
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (selectedCategory !== 'Other') {
+                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    }
+                  }}
+                >
+                  📦 Other
+                </div>
               </div>
             </div>
 
+            {/* Clear Filters Button */}
+            {(searchTerm || selectedCategory !== 'All') && (
+              <button
+                onClick={() => {
+                  handleSearch('');
+                  handleCategorySelect('All');
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  marginBottom: '1rem',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  color: '#374151',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+              >
+                Clear all filters
+              </button>
+            )}
+
+            {/* Search Results Counter */}
+            {(searchTerm || selectedCategory !== 'All') && (
+              <p style={{ 
+                color: '#6b7280', 
+                fontSize: '0.875rem', 
+                marginTop: '-0.5rem',
+                marginBottom: '1rem'
+              }}>
+                Found {filteredListings.length} {filteredListings.length === 1 ? 'result' : 'results'}
+                {searchTerm && ` for "${searchTerm}"`}
+                {selectedCategory !== 'All' && ` in ${selectedCategory}`}
+              </p>
+            )}
+
             {/* Listings Grid */}
-            <h2 style={{ marginBottom: '1rem', color: '#111827' }}>Recent Listings</h2>
+            <h2 style={{ marginBottom: '1rem', color: '#111827' }}>
+              {selectedCategory === 'All' ? 'Recent Listings' : `${selectedCategory}`}
+            </h2>
             <div style={styles.grid}>
-              {listings.length > 0 ? (
-                listings.map((listing) => (
+              {filteredListings.length > 0 ? (
+                filteredListings.map((listing) => (
                   <div 
                     key={listing.id} 
                     style={styles.card}
@@ -846,7 +1360,12 @@ export default function Home() {
                 ))
               ) : (
                 <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-                  <p>No listings yet. Be the first to post!</p>
+                  <p>
+                    {searchTerm || selectedCategory !== 'All'
+                      ? `No listings found${searchTerm ? ` for "${searchTerm}"` : ''}${selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}. Try a different search or category.`
+                      : 'No listings yet. Be the first to post!'
+                    }
+                  </p>
                 </div>
               )}
             </div>

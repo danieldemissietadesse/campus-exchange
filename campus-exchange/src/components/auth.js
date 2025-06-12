@@ -33,7 +33,40 @@ export default function Auth({ onAuth }) {
       }
       onAuth();
     } catch (error) {
-      setError(error.message.replace('Firebase: ', '').replace(/\(.*\)/, ''));
+      // Handle specific Firebase auth errors with user-friendly messages
+      let errorMessage = '';
+      
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = 'No account found with this email. Please sign up first.';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        case 'auth/email-already-in-use':
+          errorMessage = 'An account already exists with this email. Please sign in.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password should be at least 6 characters.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Invalid email format. Please check your email.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your connection.';
+          break;
+        case 'auth/invalid-credential':
+          errorMessage = 'Invalid email or password. Please try again.';
+          break;
+        default:
+          errorMessage = 'An error occurred. Please try again.';
+          console.error('Auth error:', error.code, error.message);
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -114,7 +147,7 @@ export default function Auth({ onAuth }) {
       transition: 'all 0.2s',
       outline: 'none',
       boxSizing: 'border-box',
-      color: '#000000', // Black text
+      color: '#000000',
       backgroundColor: '#ffffff'
     },
     inputFocus: {
@@ -227,7 +260,7 @@ export default function Auth({ onAuth }) {
               <label style={styles.label}>Password</label>
               <input
                 type="password"
-                placeholder={isLogin ? 'Enter your password' : 'Create a password'}
+                placeholder={isLogin ? 'Enter your password' : 'Create a password (min 6 characters)'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={styles.input}
@@ -267,6 +300,8 @@ export default function Auth({ onAuth }) {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError('');
+                setEmail('');
+                setPassword('');
               }}
               style={styles.link}
               onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
