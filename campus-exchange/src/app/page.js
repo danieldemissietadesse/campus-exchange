@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { auth } from './firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
 import Auth from '@/components/Auth';
+import MessageConversation from '@/components/MessageConversation';
 import { createListing, getListings, deleteListing, sendMessage, getMessages, markMessageAsRead } from '@/lib/db';
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [messageText, setMessageText] = useState('');
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -57,6 +59,51 @@ export default function Home() {
     } catch (error) {
       console.error('Error loading messages:', error);
     }
+  };
+
+  // Group messages by conversation (by listing and other user)
+  const getConversations = () => {
+    const conversationMap = new Map();
+    
+    messages.forEach(message => {
+      const isReceived = message.type === 'received';
+      const otherUserId = isReceived ? message.senderId : message.recipientId;
+      const otherUserEmail = isReceived ? message.senderEmail : message.recipientEmail;
+      const key = `${message.listingId}-${otherUserId}`;
+      
+      if (!conversationMap.has(key)) {
+        conversationMap.set(key, {
+          listingId: message.listingId,
+          listingTitle: message.listingTitle,
+          otherUserId,
+          otherUserEmail,
+          messages: [],
+          lastMessage: message,
+          unreadCount: 0
+        });
+      }
+      
+      const conversation = conversationMap.get(key);
+      conversation.messages.push(message);
+      
+      // Update last message if this one is more recent
+      if (!conversation.lastMessage.createdAt || 
+          (message.createdAt && message.createdAt.seconds > conversation.lastMessage.createdAt.seconds)) {
+        conversation.lastMessage = message;
+      }
+      
+      // Count unread messages
+      if (isReceived && !message.read) {
+        conversation.unreadCount++;
+      }
+    });
+    
+    // Convert to array and sort by last message time
+    return Array.from(conversationMap.values()).sort((a, b) => {
+      const aTime = a.lastMessage.createdAt?.seconds || 0;
+      const bTime = b.lastMessage.createdAt?.seconds || 0;
+      return bTime - aTime;
+    });
   };
 
   const handleImageChange = (e) => {
@@ -145,7 +192,19 @@ export default function Home() {
     }
   };
 
-  const unreadCount = messages.filter(m => !m.read).length;
+  const handleConversationClick = async (conversation) => {
+    // Mark all messages in this conversation as read
+    const unreadMessages = conversation.messages.filter(m => m.type === 'received' && !m.read);
+    for (const msg of unreadMessages) {
+      await markMessageAsRead(msg.id);
+    }
+    await loadMessages(user.uid);
+    
+    setSelectedConversation(conversation);
+  };
+
+  const unreadCount = messages.filter(m => m.type === 'received' && !m.read).length;
+  const conversations = getConversations();
 
   if (loading) {
     return (
@@ -449,11 +508,58 @@ export default function Home() {
       marginBottom: '2rem',
       boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
     },
-    messageItem: {
+    conversationItem: {
       padding: '1rem',
       borderBottom: '1px solid #e5e7eb',
       cursor: 'pointer',
-      transition: 'background-color 0.2s'
+      transition: 'background-color 0.2s',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    },
+    conversationInfo: {
+      flex: 1
+    },
+    conversationHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '0.25rem'
+    },
+    conversationTitle: {
+      fontWeight: '600',
+      color: '#111827',
+      fontSize: '1rem'
+    },
+    conversationTime: {
+      fontSize: '0.75rem',
+      color: '#9ca3af'
+    },
+    conversationParticipant: {
+      fontSize: '0.875rem',
+      color: '#6b7280',
+      marginBottom: '0.25rem'
+    },
+    conversationLastMessage: {
+      fontSize: '0.875rem',
+      color: '#4b5563',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      maxWidth: '400px'
+    },
+    unreadBadge: {
+      backgroundColor: '#10b981',
+      color: 'white',
+      borderRadius: '50%',
+      width: '20px',
+      height: '20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '0.75rem',
+      fontWeight: 'bold',
+      marginLeft: '1rem'
     },
     imageSlider: {
       position: 'relative',
@@ -503,6 +609,24 @@ export default function Home() {
     }
   };
 
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp.seconds * 1000);
+    const now = new Date();
+    const diff = now - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) {
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    } else if (days === 1) {
+      return 'Yesterday';
+    } else if (days < 7) {
+      return `${days} days ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  };
+
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -515,6 +639,7 @@ export default function Home() {
               onClick={() => {
                 setShowMessages(!showMessages);
                 setShowProfile(false);
+                setSelectedConversation(null);
               }}
               style={styles.messagesButton}
             >
@@ -527,6 +652,7 @@ export default function Home() {
               onClick={() => {
                 setShowProfile(!showProfile);
                 setShowMessages(false);
+                setSelectedConversation(null);
               }}
               style={styles.profileButton}
             >
@@ -545,36 +671,40 @@ export default function Home() {
       {/* Main Content */}
       <main style={styles.main}>
         {/* Messages Section */}
-        {showMessages && (
+        {showMessages && !selectedConversation && (
           <div style={styles.messagesSection}>
             <h2 style={{ marginBottom: '1rem', color: '#111827' }}>My Messages</h2>
-            {messages.length > 0 ? (
+            {conversations.length > 0 ? (
               <div>
-                {messages.map(message => (
+                {conversations.map((conversation, index) => (
                   <div 
-                    key={message.id} 
+                    key={index} 
                     style={{
-                      ...styles.messageItem,
-                      backgroundColor: message.read ? 'transparent' : '#f0fdf4',
-                      fontWeight: message.read ? 'normal' : 'bold'
+                      ...styles.conversationItem,
+                      backgroundColor: conversation.unreadCount > 0 ? '#f0fdf4' : 'transparent'
                     }}
-                    onClick={async () => {
-                      if (!message.read) {
-                        await markMessageAsRead(message.id);
-                        await loadMessages(user.uid);
-                      }
-                    }}
+                    onClick={() => handleConversationClick(conversation)}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = conversation.unreadCount > 0 ? '#f0fdf4' : 'transparent'}
                   >
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>From:</strong> {message.senderEmail}
+                    <div style={styles.conversationInfo}>
+                      <div style={styles.conversationHeader}>
+                        <div style={styles.conversationTitle}>{conversation.listingTitle}</div>
+                        <div style={styles.conversationTime}>
+                          {formatMessageTime(conversation.lastMessage.createdAt)}
+                        </div>
+                      </div>
+                      <div style={styles.conversationParticipant}>
+                        {conversation.otherUserEmail}
+                      </div>
+                      <div style={styles.conversationLastMessage}>
+                        {conversation.lastMessage.type === 'sent' && 'You: '}
+                        {conversation.lastMessage.message}
+                      </div>
                     </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                      <strong>About:</strong> {message.listingTitle}
-                    </div>
-                    <div style={{ color: '#4b5563' }}>{message.message}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
-                      {message.createdAt && new Date(message.createdAt.seconds * 1000).toLocaleString()}
-                    </div>
+                    {conversation.unreadCount > 0 && (
+                      <div style={styles.unreadBadge}>{conversation.unreadCount}</div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -582,6 +712,17 @@ export default function Home() {
               <p style={{ color: '#6b7280' }}>No messages yet</p>
             )}
           </div>
+        )}
+
+        {/* Show conversation view if selected */}
+        {showMessages && selectedConversation && (
+          <MessageConversation 
+            conversation={selectedConversation}
+            onBack={() => {
+              setSelectedConversation(null);
+              loadMessages(user.uid);
+            }}
+          />
         )}
 
         {/* Profile Section */}
@@ -620,92 +761,97 @@ export default function Home() {
           </div>
         )}
 
-        {/* Search Section */}
-        <div style={styles.searchSection}>
-          <div style={styles.searchBar}>
-            <input 
-              type="text" 
-              placeholder="Search for textbooks, furniture, electronics..."
-              style={styles.searchInput}
-            />
-            <button 
-              onClick={() => setShowModal(true)}
-              style={{...styles.button, ...styles.primaryButton}}
-            >
-              + Post New Item
-            </button>
-          </div>
-          
-          <div style={styles.categories}>
-            <div style={styles.categoryChip}>📚 All Categories</div>
-            <div style={styles.categoryChip}>📖 Textbooks</div>
-            <div style={styles.categoryChip}>💻 Electronics</div>
-            <div style={styles.categoryChip}>🪑 Furniture</div>
-            <div style={styles.categoryChip}>👕 Clothing</div>
-            <div style={styles.categoryChip}>🏠 Dorm Supplies</div>
-          </div>
-        </div>
-
-        {/* Listings Grid */}
-        <h2 style={{ marginBottom: '1rem', color: '#111827' }}>Recent Listings</h2>
-        <div style={styles.grid}>
-          {listings.length > 0 ? (
-            listings.map((listing) => (
-              <div 
-                key={listing.id} 
-                style={styles.card}
-                onClick={() => {
-                  setSelectedListing(listing);
-                  setCurrentImageIndex(0);
-                }}
-              >
-                <div style={styles.cardImage}>
-                  {listing.imageUrls && listing.imageUrls.length > 0 ? (
-                    <img 
-                      src={listing.imageUrls[0]} 
-                      alt={listing.title} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  ) : listing.imageUrl ? (
-                    <img 
-                      src={listing.imageUrl} 
-                      alt={listing.title} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
-                  ) : (
-                    <span>No Image</span>
-                  )}
-                  {listing.imageUrls && listing.imageUrls.length > 1 && (
-                    <div style={{ 
-                      position: 'absolute', 
-                      bottom: '0.5rem', 
-                      right: '0.5rem', 
-                      backgroundColor: 'rgba(0,0,0,0.7)', 
-                      color: 'white', 
-                      padding: '0.25rem 0.5rem', 
-                      borderRadius: '4px',
-                      fontSize: '0.75rem'
-                    }}>
-                      +{listing.imageUrls.length - 1} more
-                    </div>
-                  )}
-                </div>
-                <div style={styles.cardContent}>
-                  <h3 style={styles.cardTitle}>{listing.title}</h3>
-                  <p style={styles.cardPrice}>${listing.price}</p>
-                  <div style={styles.cardMeta}>
-                    <span>{listing.category}</span>
-                    <span>{listing.createdAt ? new Date(listing.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
-                  </div>
-                </div>
+        {/* Only show search and listings if not viewing messages or profile */}
+        {!showMessages && !showProfile && (
+          <>
+            {/* Search Section */}
+            <div style={styles.searchSection}>
+              <div style={styles.searchBar}>
+                <input 
+                  type="text" 
+                  placeholder="Search for textbooks, furniture, electronics..."
+                  style={styles.searchInput}
+                />
+                <button 
+                  onClick={() => setShowModal(true)}
+                  style={{...styles.button, ...styles.primaryButton}}
+                >
+                  + Post New Item
+                </button>
               </div>
-            ))
-          ) : (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
-              <p>No listings yet. Be the first to post!</p>
+              
+              <div style={styles.categories}>
+                <div style={styles.categoryChip}>📚 All Categories</div>
+                <div style={styles.categoryChip}>📖 Textbooks</div>
+                <div style={styles.categoryChip}>💻 Electronics</div>
+                <div style={styles.categoryChip}>🪑 Furniture</div>
+                <div style={styles.categoryChip}>👕 Clothing</div>
+                <div style={styles.categoryChip}>🏠 Dorm Supplies</div>
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* Listings Grid */}
+            <h2 style={{ marginBottom: '1rem', color: '#111827' }}>Recent Listings</h2>
+            <div style={styles.grid}>
+              {listings.length > 0 ? (
+                listings.map((listing) => (
+                  <div 
+                    key={listing.id} 
+                    style={styles.card}
+                    onClick={() => {
+                      setSelectedListing(listing);
+                      setCurrentImageIndex(0);
+                    }}
+                  >
+                    <div style={styles.cardImage}>
+                      {listing.imageUrls && listing.imageUrls.length > 0 ? (
+                        <img 
+                          src={listing.imageUrls[0]} 
+                          alt={listing.title} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                      ) : listing.imageUrl ? (
+                        <img 
+                          src={listing.imageUrl} 
+                          alt={listing.title} 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                      ) : (
+                        <span>No Image</span>
+                      )}
+                      {listing.imageUrls && listing.imageUrls.length > 1 && (
+                        <div style={{ 
+                          position: 'absolute', 
+                          bottom: '0.5rem', 
+                          right: '0.5rem', 
+                          backgroundColor: 'rgba(0,0,0,0.7)', 
+                          color: 'white', 
+                          padding: '0.25rem 0.5rem', 
+                          borderRadius: '4px',
+                          fontSize: '0.75rem'
+                        }}>
+                          +{listing.imageUrls.length - 1} more
+                        </div>
+                      )}
+                    </div>
+                    <div style={styles.cardContent}>
+                      <h3 style={styles.cardTitle}>{listing.title}</h3>
+                      <p style={styles.cardPrice}>${listing.price}</p>
+                      <div style={styles.cardMeta}>
+                        <span>{listing.category}</span>
+                        <span>{listing.createdAt ? new Date(listing.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                  <p>No listings yet. Be the first to post!</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       {/* Post Modal */}
