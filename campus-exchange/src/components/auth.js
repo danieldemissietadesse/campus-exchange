@@ -3,335 +3,146 @@
 
 import { useState } from 'react';
 import { auth } from '@/app/firebaseConfig';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+} from 'firebase/auth';
 
 export default function Auth({ onAuth }) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLogin, setIsLogin]       = useState(true);
+  const [email, setEmail]           = useState('');
+  const [password, setPassword]     = useState('');
+  const [error, setError]           = useState('');
+  const [loading, setLoading]       = useState(false);
+  const [resetMsg, setResetMsg]     = useState('');
 
-  const handleSubmit = async (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setResetMsg('');
 
     if (!email.endsWith('@wit.edu')) {
       setError('Please use your WIT email (@wit.edu)');
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await sendEmailVerification(userCredential.user);
+        const { user } = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(user);
         alert('✅ Verification email sent! Please check your inbox.');
       }
       onAuth();
-    } catch (error) {
-      // Handle specific Firebase auth errors with user-friendly messages
-      let errorMessage = '';
-      
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = 'No account found with this email. Please sign up first.';
-          break;
-        case 'auth/wrong-password':
-          errorMessage = 'Incorrect password. Please try again.';
-          break;
-        case 'auth/email-already-in-use':
-          errorMessage = 'An account already exists with this email. Please sign in.';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'Password should be at least 6 characters.';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email format. Please check your email.';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'Too many failed attempts. Please try again later.';
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = 'Network error. Please check your connection.';
-          break;
-        case 'auth/invalid-credential':
-          errorMessage = 'Invalid email or password. Please try again.';
-          break;
-        default:
-          errorMessage = 'An error occurred. Please try again.';
-          console.error('Auth error:', error.code, error.message);
-      }
-      
-      setError(errorMessage);
+    } catch (err) {
+      const map = {
+        'auth/user-not-found':       'No account with this email – sign up first.',
+        'auth/wrong-password':       'Incorrect password. Try again.',
+        'auth/email-already-in-use': 'An account already exists – sign‑in instead.',
+        'auth/weak-password':        'Password should be at least 6 characters.',
+        'auth/invalid-email':        'Invalid email format.',
+        'auth/too-many-requests':    'Too many attempts. Wait a minute and try again.',
+        'auth/network-request-failed': 'Network error. Check your connection.',
+        'auth/invalid-credential':   'Invalid email / password combination.',
+      };
+      setError(map[err.code] ?? 'Unexpected error – please try again.');
+    } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const styles = {
-    container: {
-      minHeight: '100vh',
-      backgroundColor: '#f3f4f6',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    },
-    header: {
-      backgroundColor: '#003366',
-      color: 'white',
-      padding: '1.5rem 2rem',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-    },
-    headerContent: {
-      maxWidth: '1200px',
-      margin: '0 auto',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem'
-    },
-    logo: {
-      fontSize: '1.75rem',
-      fontWeight: 'bold',
-      margin: 0,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '0.5rem'
-    },
-    main: {
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem'
-    },
-    authCard: {
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.07)',
-      width: '100%',
-      maxWidth: '400px',
-      padding: '2.5rem',
-    },
-    title: {
-      fontSize: '1.75rem',
-      fontWeight: 'bold',
-      color: '#111827',
-      textAlign: 'center',
-      marginBottom: '0.5rem'
-    },
-    subtitle: {
-      fontSize: '0.875rem',
-      color: '#6b7280',
-      textAlign: 'center',
-      marginBottom: '2rem'
-    },
-    formGroup: {
-      marginBottom: '1.25rem'
-    },
-    label: {
-      display: 'block',
-      fontSize: '0.875rem',
-      fontWeight: '500',
-      color: '#374151',
-      marginBottom: '0.5rem'
-    },
-    input: {
-      width: '100%',
-      padding: '0.75rem 1rem',
-      fontSize: '1rem',
-      border: '2px solid #e5e7eb',
-      borderRadius: '8px',
-      transition: 'all 0.2s',
-      outline: 'none',
-      boxSizing: 'border-box',
-      color: '#000000',
-      backgroundColor: '#ffffff'
-    },
-    inputFocus: {
-      borderColor: '#003366',
-      boxShadow: '0 0 0 3px rgba(0, 51, 102, 0.1)'
-    },
-    button: {
-      width: '100%',
-      padding: '0.875rem',
-      fontSize: '1rem',
-      fontWeight: '600',
-      border: 'none',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      transition: 'all 0.2s',
-      marginTop: '0.5rem'
-    },
-    primaryButton: {
-      backgroundColor: '#003366',
-      color: 'white'
-    },
-    primaryButtonHover: {
-      backgroundColor: '#002244'
-    },
-    errorBox: {
-      backgroundColor: '#fef2f2',
-      border: '1px solid #fecaca',
-      color: '#dc2626',
-      padding: '0.75rem',
-      borderRadius: '6px',
-      fontSize: '0.875rem',
-      marginBottom: '1rem'
-    },
-    divider: {
-      display: 'flex',
-      alignItems: 'center',
-      margin: '1.5rem 0',
-      color: '#9ca3af',
-      fontSize: '0.875rem'
-    },
-    dividerLine: {
-      flex: 1,
-      height: '1px',
-      backgroundColor: '#e5e7eb'
-    },
-    switchText: {
-      textAlign: 'center',
-      fontSize: '0.875rem',
-      color: '#6b7280'
-    },
-    link: {
-      color: '#003366',
-      fontWeight: '500',
-      cursor: 'pointer',
-      textDecoration: 'none'
-    },
-    linkHover: {
-      textDecoration: 'underline'
-    },
-    footer: {
-      backgroundColor: '#f9fafb',
-      padding: '1.5rem',
-      textAlign: 'center',
-      fontSize: '0.875rem',
-      color: '#6b7280'
+  async function handleForgotPassword() {
+    setError('');
+    setResetMsg('');
+    if (!email) {
+      setError('Enter your WIT email first.');
+      return;
     }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMsg('Password reset link sent! Check your inbox.');
+    } catch (err) {
+      setError('Could not send reset email – try again later.');
+    }
+  }
+
+  /* -------------------------- UI styles (inline) -------------------------- */
+  const baseInput = {
+    width: '100%',
+    padding: '0.75rem 1rem',
+    fontSize: '1rem',
+    border: '2px solid #e5e7eb',
+    borderRadius: '8px',
+    background: '#fff',
+    color: '#000',
   };
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.logo}>
-            <span style={{ fontSize: '1.5rem' }}>📦</span>
-            Campus Exchange
-          </h1>
-        </div>
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'#f3f4f6'}}>
+      <header style={{background:'#003366',color:'#fff',padding:'1.5rem 2rem'}}>
+        <h1 style={{margin:0,fontSize:'1.75rem'}}>📦 Campus Exchange</h1>
       </header>
 
-      {/* Main Content */}
-      <main style={styles.main}>
-        <div style={styles.authCard}>
-          <h2 style={styles.title}>
-            {isLogin ? 'Welcome Back!' : 'Create Account'}
-          </h2>
-          <p style={styles.subtitle}>
-            {isLogin 
-              ? 'Sign in to buy and sell with fellow WIT students' 
-              : 'Join the WIT student marketplace community'}
+      <main style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:'2rem'}}>
+        <div style={{background:'#fff',borderRadius:12,padding:'2.5rem',width:'100%',maxWidth:400,boxShadow:'0 4px 6px rgba(0,0,0,0.07)'}}>
+          <h2 style={{textAlign:'center',marginBottom:'0.5rem'}}>{isLogin?'Welcome Back!':'Create Account'}</h2>
+          <p style={{textAlign:'center',color:'#6b7280',marginBottom:'2rem'}}>
+            {isLogin?'Sign in with your WIT email':'Join the WIT marketplace community'}
           </p>
 
-          <form onSubmit={handleSubmit}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>WIT Email</label>
+          <form onSubmit={handleSubmit} style={{display:'flex',flexDirection:'column',gap:'1.25rem'}}>
+            <div>
+              <label style={{display:'block',marginBottom:4,fontSize:14}}>WIT Email</label>
               <input
+                style={baseInput}
+                disabled={loading}
                 type="email"
-                placeholder="your.name@wit.edu"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={styles.input}
-                onFocus={(e) => e.target.style.borderColor = '#003366'}
-                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                required
-                disabled={loading}
+                onChange={e=>setEmail(e.target.value)}
+                placeholder="your.name@wit.edu"
               />
             </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Password</label>
+            <div>
+              <label style={{display:'block',marginBottom:4,fontSize:14}}>Password</label>
               <input
-                type="password"
-                placeholder={isLogin ? 'Enter your password' : 'Create a password (min 6 characters)'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={styles.input}
-                onFocus={(e) => e.target.style.borderColor = '#003366'}
-                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                required
+                style={baseInput}
                 disabled={loading}
+                type="password"
+                value={password}
+                onChange={e=>setPassword(e.target.value)}
+                placeholder={isLogin?'Your password':'At least 6 characters'}
               />
             </div>
 
-            {error && (
-              <div style={styles.errorBox}>
-                ⚠️ {error}
-              </div>
+            {isLogin && (
+              <p style={{textAlign:'right',fontSize:12}}>
+                <span style={{color:'#003366',cursor:'pointer'}} onClick={handleForgotPassword}>Forgot password?</span>
+              </p>
             )}
 
-            <button
-              type="submit"
-              style={{...styles.button, ...styles.primaryButton}}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#002244'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#003366'}
-              disabled={loading}
-            >
-              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
+            {error && <div style={{background:'#fef2f2',padding:'0.75rem',borderRadius:6,color:'#b91c1c',fontSize:14}}>{error}</div>}
+            {resetMsg && <div style={{background:'#dcfce7',padding:'0.75rem',borderRadius:6,color:'#166534',fontSize:14}}>{resetMsg}</div>}
+
+            <button disabled={loading} style={{padding:'0.875rem',borderRadius:8,fontWeight:600,fontSize:'1rem',background:'#003366',color:'#fff',border:'none',cursor:'pointer'}}>
+              {loading?'Please wait...':isLogin?'Sign In':'Create Account'}
             </button>
           </form>
 
-          <div style={styles.divider}>
-            <div style={styles.dividerLine}></div>
-            <span style={{ margin: '0 1rem' }}>or</span>
-            <div style={styles.dividerLine}></div>
-          </div>
-
-          <p style={styles.switchText}>
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <span
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError('');
-                setEmail('');
-                setPassword('');
-              }}
-              style={styles.link}
-              onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
-              onMouseOut={(e) => e.target.style.textDecoration = 'none'}
-            >
-              {isLogin ? 'Sign Up' : 'Sign In'}
+          <p style={{textAlign:'center',marginTop:'1.5rem',fontSize:14}}>
+            {isLogin?"Don't have an account? ":'Already have an account? '}
+            <span style={{color:'#003366',cursor:'pointer'}} onClick={()=>{setIsLogin(!isLogin);setError('');}}>
+              {isLogin?'Sign Up':'Sign In'}
             </span>
           </p>
-
-          {!isLogin && (
-            <p style={{ 
-              fontSize: '0.75rem', 
-              color: '#9ca3af', 
-              textAlign: 'center', 
-              marginTop: '1rem',
-              lineHeight: '1.5'
-            }}>
-              By creating an account, you agree to follow WIT's student code of conduct 
-              and marketplace guidelines.
-            </p>
-          )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer style={styles.footer}>
-        <p>© 2025 Campus Exchange • A WIT Student Initiative</p>
-        <p style={{ fontSize: '0.75rem', marginTop: '0.25rem' }}>
-          For support, contact: support@campusexchange.wit.edu
-        </p>
+      <footer style={{background:'#f9fafb',padding:'1.5rem',textAlign:'center',fontSize:12,color:'#6b7280'}}>
+        © 2025 Campus Exchange
       </footer>
     </div>
   );
