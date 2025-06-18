@@ -30,8 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Environment & Secrets (but allow .example files)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+backend/*firebase*-firebase-adminsdk-*.json
 
 # vercel
 .vercel
@@ -39,9 +45,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# Environment & Secrets
-backend/.env
-.env.local
-backend/*firebase*.json
-.DS_Store
