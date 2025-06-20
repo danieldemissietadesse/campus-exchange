@@ -11,6 +11,13 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:component": "jest src/components/__tests__",
+    "test:pages": "jest src/app/__tests__",
+    "test:api": "jest src/lib/__tests__",
+    "test:unit": "jest --testPathPattern='\\.(test|spec)\\.(js|jsx)$'",
+    "test:frontend": "jest src/",
+    "test:verbose": "jest --verbose",
+    "test:silent": "jest --silent",
     "deploy": "npm run build && firebase deploy --only hosting",
     "deploy:preview": "npm run build && firebase hosting:channel:deploy preview"
   },
