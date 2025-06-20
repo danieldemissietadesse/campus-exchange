@@ -89,8 +89,9 @@ describe('MessageModal', () => {
     const textarea = screen.getByPlaceholderText('Type your message here...')
     await user.type(textarea, 'I am interested in this textbook')
 
-    // Fix: Use getByRole for the submit button instead of text
-    const sendButton = screen.getByRole('button', { name: /send message/i })
+    // Fix: Find submit button by searching for button with type="submit"
+    const sendButton = screen.getByRole('button', { name: /send message/i }) || 
+                      document.querySelector('button[type="submit"]')
     await user.click(sendButton)
 
     await waitFor(() => {

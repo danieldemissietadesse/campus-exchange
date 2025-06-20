@@ -90,9 +90,13 @@ describe('HomePage', () => {
       render(<HomePage />)
     })
 
-    // Fix: Look for text parts separately since they're in different elements
-    expect(screen.getByText('📦')).toBeInTheDocument()
-    expect(screen.getByText('Campus Exchange')).toBeInTheDocument()
+    // Fix: Use getAllByText for elements that appear multiple times
+    const logoIcons = screen.getAllByText('📦')
+    expect(logoIcons[0]).toBeInTheDocument()
+    
+    const campusExchangeTexts = screen.getAllByText('Campus Exchange')
+    expect(campusExchangeTexts[0]).toBeInTheDocument()
+    
     expect(screen.getByText(/WIT Student Marketplace/)).toBeInTheDocument()
     expect(screen.getByText(/Post New Item/)).toBeInTheDocument()
   })
