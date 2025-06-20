@@ -89,7 +89,8 @@ describe('MessageModal', () => {
     const textarea = screen.getByPlaceholderText('Type your message here...')
     await user.type(textarea, 'I am interested in this textbook')
 
-    const sendButton = screen.getByText('📤 Send Message')
+    // Fix: Use getByRole for the submit button instead of text
+    const sendButton = screen.getByRole('button', { name: /send message/i })
     await user.click(sendButton)
 
     await waitFor(() => {

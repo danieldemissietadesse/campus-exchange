@@ -90,7 +90,9 @@ describe('HomePage', () => {
       render(<HomePage />)
     })
 
-    expect(screen.getByText('📦 Campus Exchange')).toBeInTheDocument()
+    // Fix: Look for text parts separately since they're in different elements
+    expect(screen.getByText('📦')).toBeInTheDocument()
+    expect(screen.getByText('Campus Exchange')).toBeInTheDocument()
     expect(screen.getByText(/WIT Student Marketplace/)).toBeInTheDocument()
     expect(screen.getByText(/Post New Item/)).toBeInTheDocument()
   })
