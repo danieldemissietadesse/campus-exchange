@@ -42,9 +42,18 @@ export default function HomePage() {
       await reload(u);
       setUser(u);
       
-      // Special bypass for test user
-      if (u.email === 'testuser@wit.edu') {
-        console.log('🧪 Test user detected - bypassing email verification');
+      // Test users that bypass email verification - FOR DEVELOPMENT ONLY!
+      const testUsers = [
+        'testuser@wit.edu',
+        'testbuyer@wit.edu', 
+        'testseller@wit.edu',
+        'testuser1@wit.edu',
+        'testuser2@wit.edu',
+        'demissied@wit.edu'  // Your main account
+      ];
+      
+      if (testUsers.includes(u.email)) {
+        console.log('🧪 Test user detected - bypassing email verification:', u.email);
         setAuthed(true);
       } else {
         setAuthed(u.emailVerified);

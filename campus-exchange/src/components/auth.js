@@ -17,6 +17,15 @@ export default function Auth({ onAuth }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  // Test users for development
+  const testUsers = [
+    { email: 'testuser@wit.edu', name: 'Test User' },
+    { email: 'testbuyer@wit.edu', name: 'Test Buyer' },
+    { email: 'testseller@wit.edu', name: 'Test Seller' },
+    { email: 'testuser1@wit.edu', name: 'Test User 1' },
+    { email: 'testuser2@wit.edu', name: 'Test User 2' }
+  ];
+
   const resetForm = () => {
     setEmail('');
     setPassword('');
@@ -36,6 +45,42 @@ export default function Auth({ onAuth }) {
 
   const validatePassword = (password) => {
     return password.length >= 6;
+  };
+
+  const handleTestUserLogin = async (testEmail) => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      // First, try to create the account
+      const { user } = await createUserWithEmailAndPassword(auth, testEmail, 'test123');
+      console.log(`✅ Created new test user: ${testEmail}`);
+      setMessage(`✅ Created test account for ${testEmail.split('@')[0]}!`);
+      
+      // Clear message after 1 second and proceed
+      setTimeout(() => {
+        setMessage('');
+        onAuth();
+      }, 1000);
+      
+    } catch (createError) {
+      if (createError.code === 'auth/email-already-in-use') {
+        // Account already exists, try to sign in
+        try {
+          await signInWithEmailAndPassword(auth, testEmail, 'test123');
+          console.log(`✅ Signed in as existing test user: ${testEmail}`);
+          onAuth();
+        } catch (signInError) {
+          console.error('Sign in error:', signInError);
+          setError(`Test account exists but sign-in failed. You can try manually: Email: ${testEmail}, Password: test123`);
+        }
+      } else {
+        console.error('Create user error:', createError);
+        setError('Failed to create test account: ' + createError.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -69,9 +114,17 @@ export default function Auth({ onAuth }) {
 
         case 'signup':
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
-          await sendEmailVerification(user);
-          setMessage('✅ Account created! Please check your email to verify your account.');
-          setTimeout(() => switchMode('login'), 3000);
+          
+          // Check if it's a test user (skip email verification)
+          if (testUsers.some(testUser => testUser.email === email)) {
+            console.log('Test user created - skipping email verification');
+            setMessage('✅ Test account created! You can now use the app.');
+            setTimeout(() => onAuth(), 2000);
+          } else {
+            await sendEmailVerification(user);
+            setMessage('✅ Account created! Please check your email to verify your account.');
+            setTimeout(() => switchMode('login'), 3000);
+          }
           break;
 
         case 'forgot':
@@ -145,6 +198,28 @@ export default function Auth({ onAuth }) {
           <div style={styles.cardHeader}>
             <h2 style={styles.title}>{content.title}</h2>
             <p style={styles.subtitle}>{content.subtitle}</p>
+          </div>
+
+          {/* Test Users Section - FOR DEVELOPMENT */}
+          <div style={styles.testSection}>
+            <h3 style={styles.testTitle}>🧪 Quick Test Login</h3>
+            <p style={styles.testDescription}>For testing messaging between different users:</p>
+            <div style={styles.testButtons}>
+              {testUsers.map((testUser) => (
+                <button
+                  key={testUser.email}
+                  onClick={() => handleTestUserLogin(testUser.email)}
+                  disabled={loading}
+                  style={styles.testButton}
+                >
+                  {testUser.name}
+                  <span style={styles.testEmail}>{testUser.email}</span>
+                </button>
+              ))}
+            </div>
+            <div style={styles.divider}>
+              <span style={styles.dividerText}>OR</span>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} style={styles.form}>
@@ -326,7 +401,7 @@ const styles = {
     borderRadius: '16px',
     padding: '3rem',
     width: '100%',
-    maxWidth: '450px',
+    maxWidth: '500px',
     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
     border: '1px solid #e2e8f0'
   },
@@ -345,6 +420,60 @@ const styles = {
     color: '#64748b',
     lineHeight: '1.5',
     margin: 0
+  },
+  testSection: {
+    backgroundColor: '#f0f9ff',
+    padding: '1.5rem',
+    borderRadius: '12px',
+    marginBottom: '2rem',
+    border: '1px solid #bae6fd'
+  },
+  testTitle: {
+    fontSize: '1rem',
+    fontWeight: '600',
+    color: '#0c4a6e',
+    marginBottom: '0.5rem'
+  },
+  testDescription: {
+    fontSize: '0.875rem',
+    color: '#0c4a6e',
+    marginBottom: '1rem'
+  },
+  testButtons: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem'
+  },
+  testButton: {
+    background: 'white',
+    border: '2px solid #bae6fd',
+    borderRadius: '8px',
+    padding: '0.75rem 1rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    textAlign: 'left',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  testEmail: {
+    fontSize: '0.75rem',
+    color: '#64748b',
+    marginTop: '0.25rem'
+  },
+  divider: {
+    display: 'flex',
+    alignItems: 'center',
+    margin: '1.5rem 0',
+    position: 'relative'
+  },
+  dividerText: {
+    backgroundColor: 'white',
+    color: '#64748b',
+    fontSize: '0.875rem',
+    padding: '0 1rem',
+    position: 'absolute',
+    left: '50%',
+    transform: 'translateX(-50%)'
   },
   form: {
     display: 'flex',

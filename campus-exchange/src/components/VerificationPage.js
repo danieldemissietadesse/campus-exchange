@@ -7,11 +7,19 @@ export default function VerificationPage({ user }) {
   const [isResending, setIsResending] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Test user bypass - DO NOT use in production!
+  // Test users that bypass verification - FOR DEVELOPMENT ONLY!
+  const testUsers = [
+    'testuser@wit.edu',
+    'testbuyer@wit.edu', 
+    'testseller@wit.edu',
+    'testuser1@wit.edu',
+    'testuser2@wit.edu',
+    'demissied@wit.edu'  // Your main account
+  ];
+
   useEffect(() => {
-    if (user?.email === 'testuser@wit.edu') {
-      // Auto-bypass verification for test user
-      console.log('🧪 Test user detected - bypassing email verification');
+    if (user?.email && testUsers.includes(user.email)) {
+      console.log('🧪 Test user detected - bypassing email verification:', user.email);
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -37,8 +45,8 @@ export default function VerificationPage({ user }) {
     window.location.reload();
   };
 
-  // Special handling for test user
-  if (user?.email === 'testuser@wit.edu') {
+  // Special handling for test users
+  if (user?.email && testUsers.includes(user.email)) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
@@ -48,6 +56,9 @@ export default function VerificationPage({ user }) {
           <h1 style={styles.title}>Test User Detected</h1>
           <p style={styles.description}>
             Bypassing email verification for testing purposes...
+          </p>
+          <p style={styles.testUserInfo}>
+            User: {user.email}
           </p>
           <div style={styles.loadingDots}>
             <span>●</span><span>●</span><span>●</span>
@@ -187,6 +198,12 @@ const styles = {
     backgroundColor: '#f0f9ff',
     borderRadius: '8px',
     border: '1px solid #bfdbfe'
+  },
+  testUserInfo: {
+    fontSize: '1rem',
+    color: '#059669',
+    marginBottom: '1rem',
+    fontWeight: '500'
   },
   instructions: {
     marginBottom: '1.5rem'
