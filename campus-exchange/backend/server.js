@@ -49,7 +49,7 @@ app.use((err, _req, res, _next) => {
 /* ─── 3. Listen only when NOT running in Jest ──────────────────── */
 const isTest = process.env.NODE_ENV === 'test';
 if (!isTest) {
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 5001;
   app.listen(PORT, () =>
     console.log(`🚀 API ready at http://localhost:${PORT}`));
 }

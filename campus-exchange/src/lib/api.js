@@ -62,18 +62,42 @@ export function streamListings(onData) {
   return () => es.close();
 }
 
-/**  Pass the current userId – the backend filters messages for you */
+/**  FIXED: Improved message streaming with proper error handling */
 export function streamMessages(userId, onData) {
-  const es = new EventSource(`${API}/messages/stream?userId=${userId}`);
+  console.log('Starting message stream for user:', userId);
+  
+  const es = new EventSource(`${API}/messages/stream`);
+  
   es.onmessage = (evt) => {
     try {
-      onData(JSON.parse(evt.data));
+      const parsed = JSON.parse(evt.data);
+      console.log('SSE message received:', parsed);
+      
+      if (parsed.type === 'messages') {
+        onData(parsed.data);
+      } else if (parsed.type === 'heartbeat') {
+        console.log('SSE heartbeat received');
+      } else if (parsed.type === 'error') {
+        console.error('SSE error message:', parsed.message);
+      }
     } catch (err) {
-      console.error("SSE messages parse error:", err);
+      console.error("SSE messages parse error:", err, evt.data);
     }
   };
-  es.onerror = (e) => console.warn("messages SSE error", e);
-  return () => es.close();
+  
+  es.onerror = (e) => {
+    console.warn("messages SSE error", e);
+    // Don't immediately reconnect, let the browser handle it
+  };
+  
+  es.onopen = () => {
+    console.log('SSE connection opened for messages');
+  };
+  
+  return () => {
+    console.log('Closing SSE connection for messages');
+    es.close();
+  };
 }
 
 /* ----------  Listings CRUD ---------- */
@@ -100,9 +124,37 @@ export async function deleteListing(id) {
 
 /* ----------  Messaging ---------- */
 export async function sendMessage(msg) {
-  return apiSend("POST", "/messages", msg);
+  console.log('Sending message via API:', msg);
+  try {
+    const result = await apiSend("POST", "/messages", msg);
+    console.log('Message sent successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
 }
 
 export async function markMessageAsRead(id) {
   return apiSend("PATCH", `/messages/${id}/read`);
+}
+
+export async function getMessages() {
+  return apiGet("/messages");
+}
+
+/* ----------  NEW: Conversation Management ---------- */
+export async function getConversation(listingId, otherUserId) {
+  return apiGet(`/messages/conversations/${listingId}?otherUserId=${otherUserId}`);
+}
+
+/* ----------  Enhanced Error Handling ---------- */
+export async function testConnection() {
+  try {
+    const response = await fetch(`${API}/health`);
+    return response.ok;
+  } catch (error) {
+    console.error('Connection test failed:', error);
+    return false;
+  }
 }

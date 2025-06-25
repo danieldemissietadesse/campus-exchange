@@ -1,13 +1,31 @@
 // src/components/MessagesList.js
+import { useEffect, useState } from 'react';
 import { markMessageAsRead } from '@/lib/api';
 
 export default function MessagesList({ messages, currentUserId }) {
+  const [localMessages, setLocalMessages] = useState(messages);
+
+  // Update local state when props change
+  useEffect(() => {
+    setLocalMessages(messages);
+  }, [messages]);
+
   const handleMarkAsRead = async (messageId, isRead) => {
     if (!isRead) {
       try {
         await markMessageAsRead(messageId);
+        
+        // Optimistically update local state
+        setLocalMessages(prev => 
+          prev.map(msg => 
+            msg.id === messageId ? { ...msg, read: true } : msg
+          )
+        );
+        
       } catch (error) {
         console.error('Error marking message as read:', error);
+        // Revert optimistic update on error
+        setLocalMessages(messages);
       }
     }
   };
@@ -39,8 +57,14 @@ export default function MessagesList({ messages, currentUserId }) {
   };
 
   // Separate received and sent messages
-  const receivedMessages = messages.filter(m => m.recipientId === currentUserId);
-  const sentMessages = messages.filter(m => m.senderId === currentUserId);
+  const receivedMessages = localMessages.filter(m => m.recipientId === currentUserId);
+  const sentMessages = localMessages.filter(m => m.senderId === currentUserId);
+
+  console.log('MessagesList rendered with:', { 
+    totalMessages: localMessages.length, 
+    received: receivedMessages.length, 
+    sent: sentMessages.length 
+  });
 
   return (
     <div style={styles.container}>
@@ -80,10 +104,12 @@ export default function MessagesList({ messages, currentUserId }) {
                 </span>
               </div>
               
-              <div style={styles.messageSubject}>
-                <span style={styles.aboutLabel}>About:</span>
-                <span style={styles.listingTitle}>{message.listingTitle}</span>
-              </div>
+              {message.listingTitle && (
+                <div style={styles.messageSubject}>
+                  <span style={styles.aboutLabel}>About:</span>
+                  <span style={styles.listingTitle}>{message.listingTitle}</span>
+                </div>
+              )}
               
               <div style={styles.messageContent}>
                 {message.message}

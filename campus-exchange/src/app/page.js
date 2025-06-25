@@ -53,7 +53,7 @@ export default function HomePage() {
     return () => off();
   }, []);
 
-  // Data streams
+  // Data streams - UPDATED MESSAGING
   useEffect(() => {
     if (!authed) return;
     const unsub = streamListings(setListings);
@@ -62,8 +62,17 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!authed || !user?.uid) return;
-    const unsub = streamMessages(user.uid, setMessages);
-    return () => unsub();
+    
+    console.log('Setting up message stream for user:', user.uid);
+    const unsub = streamMessages(user.uid, (newMessages) => {
+      console.log('Received messages update:', newMessages);
+      setMessages(newMessages);
+    });
+    
+    return () => {
+      console.log('Cleaning up message stream');
+      unsub();
+    };
   }, [authed, user?.uid]);
 
   // Filter listings

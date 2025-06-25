@@ -13,7 +13,7 @@ export default function MessageModal({ listing, currentUser, onClose }) {
     setIsSending(true);
     
     try {
-      await sendMessage({
+      const messageData = {
         senderId: currentUser.uid,
         senderEmail: currentUser.email,
         recipientId: listing.userId,
@@ -21,7 +21,10 @@ export default function MessageModal({ listing, currentUser, onClose }) {
         listingId: listing.id,
         listingTitle: listing.title,
         message: messageText.trim()
-      });
+      };
+      
+      console.log('Sending message with data:', messageData);
+      await sendMessage(messageData);
       
       onClose();
       setMessageText('');
@@ -39,6 +42,7 @@ export default function MessageModal({ listing, currentUser, onClose }) {
         border-radius: 8px;
         z-index: 10000;
         font-weight: 500;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
       `;
       document.body.appendChild(notification);
       setTimeout(() => notification.remove(), 3000);
