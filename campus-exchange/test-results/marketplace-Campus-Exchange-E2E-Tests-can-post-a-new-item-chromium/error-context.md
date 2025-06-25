@@ -1,0 +1,74 @@
+# Page snapshot
+
+```yaml
+- alert
+- button "Open Next.js Dev Tools":
+  - img
+- banner:
+  - text: 📦 Campus Exchange demissied@wit.edu
+  - button "💬 Messages"
+  - button "👤 Profile"
+  - button "Logout"
+- main:
+  - heading "🛍️ WIT Student Marketplace" [level=2]
+  - button "✨ Post New Item"
+  - text: 🔍
+  - textbox "Search for textbooks, furniture, electronics..."
+  - button "🏪 All"
+  - button "📚 Textbooks"
+  - button "💻 Electronics"
+  - button "🪑 Furniture"
+  - button "👕 Clothing"
+  - button "🏠 Dorm Supplies"
+  - button "📦 Other"
+  - heading "All Items (12)" [level=3]
+  - text: 📷 No Image
+  - heading "E2E Test Textbook" [level=3]
+  - paragraph: $45
+  - text: 📚 Textbooks Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By 📷 No Image
+  - heading "Jest demo" [level=3]
+  - paragraph: $42
+  - text: 📦 Books Just now By
+  - img "IKEA JANSJÖ Adjustable Desk Lamp"
+  - text: +2 more
+  - heading "IKEA JANSJÖ Adjustable Desk Lamp" [level=3]
+  - paragraph: $15
+  - text: 🏠 Dorm Supplies Just now By
+  - img "60W USB-C MacBook Charger + 2m Cable"
+  - text: +1 more
+  - heading "60W USB-C MacBook Charger + 2m Cable" [level=3]
+  - paragraph: $25
+  - text: 💻 Electronics Just now By
+  - 'img "Calculus: Early Transcendentals (Stewart, 8th ed.)"'
+  - text: +1 more
+  - 'heading "Calculus: Early Transcendentals (Stewart, 8th ed.)" [level=3]'
+  - paragraph: $45
+  - text: 📚 Textbooks Just now By
+- contentinfo:
+  - text: 📦 Campus Exchange
+  - paragraph: WIT's exclusive student marketplace for buying and selling items safely within our verified community.
+  - paragraph: © 2025 Campus Exchange • A WIT Student Initiative
+  - paragraph: Exclusively for WIT students with verified @wit.edu emails
+- text: ✅ Item posted successfully!
+```

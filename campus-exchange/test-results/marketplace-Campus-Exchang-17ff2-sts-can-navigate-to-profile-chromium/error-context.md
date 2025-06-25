@@ -1,0 +1,41 @@
+# Page snapshot
+
+```yaml
+- alert
+- button "Open Next.js Dev Tools":
+  - img
+- banner:
+  - text: 📦 Campus Exchange demissied@wit.edu
+  - button "💬 Messages"
+  - button "👤 Profile"
+  - button "Logout"
+- main:
+  - heading "👤 My Profile" [level=2]
+  - heading "ℹ️ Account Information" [level=3]
+  - text: "Email: demissied@wit.edu Member Since: June 2025 Account Status: ✅ Verified WIT Student"
+  - heading "📊 My Statistics" [level=3]
+  - text: 3 Active Listings $85 Total Value
+  - heading "Categories:" [level=4]
+  - text: 📚 Textbooks 1 🏠 Dorm Supplies 1 💻 Electronics 1
+  - heading "🏪 My Active Listings (3)" [level=3]
+  - text: 📷
+  - heading "E2E Test Textbook" [level=4]
+  - paragraph: $45
+  - paragraph: 📚 Textbooks
+  - button "🗑️ Delete"
+  - img "IKEA JANSJÖ Adjustable Desk Lamp"
+  - heading "IKEA JANSJÖ Adjustable Desk Lamp" [level=4]
+  - paragraph: $15
+  - paragraph: 🏠 Dorm Supplies
+  - button "🗑️ Delete"
+  - img "60W USB-C MacBook Charger + 2m Cable"
+  - heading "60W USB-C MacBook Charger + 2m Cable" [level=4]
+  - paragraph: $25
+  - paragraph: 💻 Electronics
+  - button "🗑️ Delete"
+- contentinfo:
+  - text: 📦 Campus Exchange
+  - paragraph: WIT's exclusive student marketplace for buying and selling items safely within our verified community.
+  - paragraph: © 2025 Campus Exchange • A WIT Student Initiative
+  - paragraph: Exclusively for WIT students with verified @wit.edu emails
+```
