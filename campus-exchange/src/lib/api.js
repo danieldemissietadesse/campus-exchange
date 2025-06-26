@@ -1,4 +1,4 @@
-// src/lib/api.js
+// src/lib/api.js - COMPLETE UPDATED VERSION
 import { getAuth } from "firebase/auth";
 
 /* ------------------------------------------------------------------
@@ -62,41 +62,80 @@ export function streamListings(onData) {
   return () => es.close();
 }
 
-/**  FIXED: Improved message streaming with proper error handling */
+/**  FIXED: Improved message streaming with proper error handling and reconnection */
 export function streamMessages(userId, onData) {
-  console.log('Starting message stream for user:', userId);
+  console.log('🚀 Starting message stream for user:', userId);
   
-  const es = new EventSource(`${API}/messages/stream`);
-  
-  es.onmessage = (evt) => {
+  // Add auth headers to SSE request
+  const connectSSE = async () => {
     try {
-      const parsed = JSON.parse(evt.data);
-      console.log('SSE message received:', parsed);
-      
-      if (parsed.type === 'messages') {
-        onData(parsed.data);
-      } else if (parsed.type === 'heartbeat') {
-        console.log('SSE heartbeat received');
-      } else if (parsed.type === 'error') {
-        console.error('SSE error message:', parsed.message);
+      const headers = await authHeaders();
+      const authParams = new URLSearchParams();
+      if (headers.Authorization) {
+        authParams.append('auth', headers.Authorization.replace('Bearer ', ''));
       }
-    } catch (err) {
-      console.error("SSE messages parse error:", err, evt.data);
+      
+      const url = `${API}/messages/stream?userId=${userId}&${authParams.toString()}`;
+      console.log('📡 Connecting to SSE:', url);
+      
+      const es = new EventSource(url);
+      
+      es.onopen = () => {
+        console.log('✅ SSE connection opened for messages');
+      };
+      
+      es.onmessage = (evt) => {
+        try {
+          const parsed = JSON.parse(evt.data);
+          console.log('📨 SSE message received:', parsed);
+          
+          if (parsed.type === 'messages') {
+            console.log(`📥 Processing ${parsed.data.length} messages`);
+            onData(parsed.data);
+          } else if (parsed.type === 'heartbeat') {
+            console.log('💓 SSE heartbeat received');
+          } else if (parsed.type === 'error') {
+            console.error('❌ SSE error message:', parsed.message);
+          } else {
+            // Handle direct message data (fallback)
+            if (Array.isArray(parsed)) {
+              console.log(`📥 Processing ${parsed.length} direct messages`);
+              onData(parsed);
+            }
+          }
+        } catch (err) {
+          console.error("❌ SSE messages parse error:", err, evt.data);
+        }
+      };
+      
+      es.onerror = (e) => {
+        console.warn("⚠️ Messages SSE error:", e);
+        // Don't immediately reconnect on error - let browser handle it
+        if (es.readyState === EventSource.CLOSED) {
+          console.log('🔄 SSE connection closed, will reconnect...');
+        }
+      };
+      
+      return es;
+    } catch (error) {
+      console.error('❌ Failed to create SSE connection:', error);
+      return null;
     }
   };
   
-  es.onerror = (e) => {
-    console.warn("messages SSE error", e);
-    // Don't immediately reconnect, let the browser handle it
-  };
+  // Start the connection
+  let eventSource = null;
+  connectSSE().then(es => {
+    eventSource = es;
+  });
   
-  es.onopen = () => {
-    console.log('SSE connection opened for messages');
-  };
-  
+  // Return cleanup function
   return () => {
-    console.log('Closing SSE connection for messages');
-    es.close();
+    console.log('🔌 Closing SSE connection for messages');
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
   };
 }
 

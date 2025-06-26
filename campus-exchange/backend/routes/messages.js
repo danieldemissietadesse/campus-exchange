@@ -72,23 +72,27 @@ router.patch('/:id/read', async (req, res) => {
   }
 });
 
-/* ────────── GET /api/messages/stream (SSE) ────────── */
+/* ────────── GET /api/messages/stream (SSE) - FIXED VERSION ────────── */
 router.get('/stream', (req, res) => {
   const uid = req.userUid;
+  console.log(`🔗 SSE connection request for user: ${uid}`);
 
   res.set({
     'Cache-Control': 'no-cache',
-    'Content-Type' : 'text/event-stream',
-    Connection     : 'keep-alive'
+    'Content-Type': 'text/event-stream',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
   });
   res.flushHeaders();
 
   // Send initial heartbeat
-  res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+  res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now(), userId: uid })}\n\n`);
+  console.log(`💓 Sent heartbeat to user ${uid}`);
 
-  // Listen for messages where this user is the recipient
+  // Create Firestore listener with proper error handling
   const unsub = db.collection('messages')
-                  .where('recipientId', '==', uid)
+                  .where('recipientId', '==', uid)  // Only messages FOR this user
                   .orderBy('createdAt', 'desc')
                   .onSnapshot(snap => {
     try {
@@ -104,20 +108,63 @@ router.get('/stream', (req, res) => {
         });
       });
       
-      console.log(`Sending ${msgs.length} messages to user ${uid}`);
-      res.write(`data: ${JSON.stringify({ type: 'messages', data: msgs })}\n\n`);
+      console.log(`📤 Sending ${msgs.length} messages to user ${uid}`);
+      
+      // Send as structured message
+      const message = JSON.stringify({ 
+        type: 'messages', 
+        data: msgs,
+        timestamp: Date.now(),
+        userId: uid
+      });
+      
+      res.write(`data: ${message}\n\n`);
+      
     } catch (error) {
-      console.error('SSE message processing error:', error);
-      res.write(`data: ${JSON.stringify({ type: 'error', message: 'Processing error' })}\n\n`);
+      console.error('❌ SSE message processing error:', error);
+      res.write(`data: ${JSON.stringify({ 
+        type: 'error', 
+        message: 'Processing error',
+        timestamp: Date.now() 
+      })}\n\n`);
     }
   }, (error) => {
-    console.error('Firestore listener error:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', message: 'Database connection error' })}\n\n`);
+    console.error('❌ Firestore listener error for user', uid, ':', error);
+    res.write(`data: ${JSON.stringify({ 
+      type: 'error', 
+      message: 'Database connection error',
+      timestamp: Date.now() 
+    })}\n\n`);
   });
 
+  // Handle client disconnect
   req.on('close', () => {
-    console.log(`SSE connection closed for user ${uid}`);
+    console.log(`🔌 SSE connection closed for user ${uid}`);
     unsub();
+  });
+
+  req.on('error', (error) => {
+    console.error(`❌ SSE request error for user ${uid}:`, error);
+    unsub();
+  });
+
+  // Periodic heartbeat to keep connection alive
+  const heartbeatInterval = setInterval(() => {
+    try {
+      res.write(`data: ${JSON.stringify({ 
+        type: 'heartbeat', 
+        timestamp: Date.now(),
+        userId: uid 
+      })}\n\n`);
+    } catch (error) {
+      console.error('❌ Heartbeat error:', error);
+      clearInterval(heartbeatInterval);
+    }
+  }, 30000); // Every 30 seconds
+
+  // Clean up heartbeat on disconnect
+  req.on('close', () => {
+    clearInterval(heartbeatInterval);
   });
 });
 

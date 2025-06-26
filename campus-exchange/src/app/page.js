@@ -62,27 +62,44 @@ export default function HomePage() {
     return () => off();
   }, []);
 
-  // Data streams - UPDATED MESSAGING
+  // Data streams
   useEffect(() => {
     if (!authed) return;
     const unsub = streamListings(setListings);
     return () => unsub();
   }, [authed]);
 
+  // FIXED: Message streaming useEffect
   useEffect(() => {
-    if (!authed || !user?.uid) return;
+    if (!authed || !user?.uid) {
+      console.log('⏭️ Skipping message stream setup - user not ready:', { authed, uid: user?.uid });
+      return;
+    }
     
-    console.log('Setting up message stream for user:', user.uid);
-    const unsub = streamMessages(user.uid, (newMessages) => {
-      console.log('Received messages update:', newMessages);
+    console.log('🚀 Setting up message stream for user:', user.uid);
+    
+    // Create a stable callback that won't change on every render
+    const handleMessageUpdate = (newMessages) => {
+      console.log('📨 Message update received:', newMessages.length, 'messages');
       setMessages(newMessages);
-    });
+    };
+    
+    const unsub = streamMessages(user.uid, handleMessageUpdate);
     
     return () => {
-      console.log('Cleaning up message stream');
-      unsub();
+      console.log('🧹 Cleaning up message stream for user:', user.uid);
+      if (unsub) {
+        unsub();
+      }
     };
-  }, [authed, user?.uid]);
+  }, [authed, user?.uid]); // Only depend on essential values
+
+  // ALSO ADD: Debug effect to monitor message state changes
+  useEffect(() => {
+    console.log(`📊 Messages state updated: ${messages.length} total messages`);
+    const unreadCount = messages.filter(m => !m.read && m.recipientId === user?.uid).length;
+    console.log(`📬 Unread messages: ${unreadCount}`);
+  }, [messages, user?.uid]);
 
   // Filter listings
   useEffect(() => {
