@@ -1,4 +1,4 @@
-// src/lib/api.js - COMPLETE UPDATED VERSION
+// src/lib/api.js - HYBRID VERSION WITH SSE + POLLING FALLBACK
 import { getAuth } from "firebase/auth";
 
 /* ------------------------------------------------------------------
@@ -62,11 +62,52 @@ export function streamListings(onData) {
   return () => es.close();
 }
 
-/**  FIXED: Improved message streaming with proper error handling and reconnection */
+/**  HYBRID: SSE with polling fallback for reliable message delivery */
 export function streamMessages(userId, onData) {
-  console.log('🚀 Starting message stream for user:', userId);
+  console.log('🚀 Starting hybrid message stream for user:', userId);
   
-  // Add auth headers to SSE request
+  let eventSource = null;
+  let pollingInterval = null;
+  let lastMessageCount = 0;
+  let sseConnected = false;
+  let reconnectAttempts = 0;
+  const maxReconnectAttempts = 3;
+  const reconnectDelay = 2000;
+  const pollingInterval_ms = 5000; // Poll every 5 seconds as fallback
+  
+  // Polling fallback function
+  const pollMessages = async () => {
+    try {
+      console.log('🔄 Polling for messages...');
+      const messages = await getMessages();
+      
+      if (messages.length !== lastMessageCount) {
+        console.log(`📥 Polling detected ${messages.length} messages (was ${lastMessageCount})`);
+        lastMessageCount = messages.length;
+        onData(messages);
+      }
+    } catch (error) {
+      console.error('❌ Polling error:', error);
+    }
+  };
+  
+  // Start polling as immediate fallback
+  const startPolling = () => {
+    if (pollingInterval) return; // Already polling
+    console.log('🔄 Starting polling fallback');
+    pollMessages(); // Initial poll
+    pollingInterval = setInterval(pollMessages, pollingInterval_ms);
+  };
+  
+  // Stop polling when SSE works
+  const stopPolling = () => {
+    if (pollingInterval) {
+      console.log('⏹️ Stopping polling (SSE working)');
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+  };
+  
   const connectSSE = async () => {
     try {
       const headers = await authHeaders();
@@ -78,29 +119,36 @@ export function streamMessages(userId, onData) {
       const url = `${API}/messages/stream?userId=${userId}&${authParams.toString()}`;
       console.log('📡 Connecting to SSE:', url);
       
-      const es = new EventSource(url);
+      eventSource = new EventSource(url);
       
-      es.onopen = () => {
+      eventSource.onopen = () => {
         console.log('✅ SSE connection opened for messages');
+        sseConnected = true;
+        reconnectAttempts = 0;
+        stopPolling(); // Stop polling when SSE works
       };
       
-      es.onmessage = (evt) => {
+      eventSource.onmessage = (evt) => {
         try {
           const parsed = JSON.parse(evt.data);
-          console.log('📨 SSE message received:', parsed);
           
           if (parsed.type === 'messages') {
-            console.log(`📥 Processing ${parsed.data.length} messages`);
+            console.log(`📥 SSE: Processing ${parsed.data.length} messages (trigger: ${parsed.trigger || 'unknown'})`);
+            lastMessageCount = parsed.data.length;
             onData(parsed.data);
+            sseConnected = true;
           } else if (parsed.type === 'heartbeat') {
             console.log('💓 SSE heartbeat received');
+            sseConnected = true;
           } else if (parsed.type === 'error') {
             console.error('❌ SSE error message:', parsed.message);
           } else {
             // Handle direct message data (fallback)
             if (Array.isArray(parsed)) {
-              console.log(`📥 Processing ${parsed.length} direct messages`);
+              console.log(`📥 SSE: Processing ${parsed.length} direct messages`);
+              lastMessageCount = parsed.length;
               onData(parsed);
+              sseConnected = true;
             }
           }
         } catch (err) {
@@ -108,34 +156,54 @@ export function streamMessages(userId, onData) {
         }
       };
       
-      es.onerror = (e) => {
+      eventSource.onerror = (e) => {
         console.warn("⚠️ Messages SSE error:", e);
-        // Don't immediately reconnect on error - let browser handle it
-        if (es.readyState === EventSource.CLOSED) {
-          console.log('🔄 SSE connection closed, will reconnect...');
+        sseConnected = false;
+        
+        if (eventSource.readyState === EventSource.CLOSED) {
+          console.log('🔄 SSE connection closed');
+          
+          // Start polling immediately when SSE fails
+          startPolling();
+          
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            console.log(`🔄 SSE reconnect attempt ${reconnectAttempts}/${maxReconnectAttempts}`);
+            
+            setTimeout(() => {
+              if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+                connectSSE();
+              }
+            }, reconnectDelay * reconnectAttempts);
+          } else {
+            console.log('❌ Max SSE reconnection attempts reached, relying on polling');
+          }
         }
       };
       
-      return es;
     } catch (error) {
       console.error('❌ Failed to create SSE connection:', error);
-      return null;
+      sseConnected = false;
+      startPolling(); // Fallback to polling
     }
   };
   
-  // Start the connection
-  let eventSource = null;
-  connectSSE().then(es => {
-    eventSource = es;
-  });
+  // Start with both SSE and polling
+  connectSSE();
+  startPolling(); // Start polling immediately as backup
   
   // Return cleanup function
   return () => {
-    console.log('🔌 Closing SSE connection for messages');
+    console.log('🔌 Closing message stream');
     if (eventSource) {
       eventSource.close();
       eventSource = null;
     }
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      pollingInterval = null;
+    }
+    sseConnected = false;
   };
 }
 
@@ -163,13 +231,13 @@ export async function deleteListing(id) {
 
 /* ----------  Messaging ---------- */
 export async function sendMessage(msg) {
-  console.log('Sending message via API:', msg);
+  console.log('📤 Sending message via API:', msg);
   try {
     const result = await apiSend("POST", "/messages", msg);
-    console.log('Message sent successfully:', result);
+    console.log('✅ Message sent successfully:', result);
     return result;
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error('❌ Error sending message:', error);
     throw error;
   }
 }
@@ -197,3 +265,4 @@ export async function testConnection() {
     return false;
   }
 }
+
