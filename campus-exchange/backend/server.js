@@ -23,7 +23,27 @@ const listingsRouter  = require('./routes/listings');
 const messagesRouter  = require('./routes/messages');
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+
+// CORS configuration for both local development and production
+const allowedOrigins = [
+  'http://localhost:3000',      // Next.js default dev port
+  'http://localhost:3001',      // Your current dev port
+  'https://campusexchange.online',  // Production domain
+  'https://www.campusexchange.online'  // Production domain with www
+];
+
+// Add any additional origins from environment variable
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
+app.use(cors({ 
+  origin: allowedOrigins,
+  credentials: true,  // Allow credentials (cookies, authorization headers)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(morgan('dev'));
 app.use(express.json());
 
@@ -50,9 +70,12 @@ app.use((err, _req, res, _next) => {
 const isTest = process.env.NODE_ENV === 'test';
 if (!isTest) {
   const PORT = process.env.PORT || 5001;
-  app.listen(PORT, () =>
-    console.log(`🚀 API ready at http://localhost:${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`🚀 API ready at http://localhost:${PORT}`);
+    console.log(`🌐 Allowed origins:`, allowedOrigins);
+  });
 }
 
 /* export for Supertest */
 module.exports = app;
+

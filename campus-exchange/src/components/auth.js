@@ -1,361 +1,181 @@
 // src/components/Auth.js
-import { useState } from 'react';
-import { auth } from '@/app/firebaseConfig';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-} from 'firebase/auth';
+"use client";
+
+import { useState } from "react";
+import { auth } from "../app/firebaseConfig"; // Adjust the import path as needed
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 
 export default function Auth({ onAuth }) {
-  const [authMode, setAuthMode] = useState('login'); // 'login', 'signup', 'forgot'
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
 
-  // Test users for development
-  const testUsers = [
-    { email: 'testuser@wit.edu', name: 'Test User' },
-    { email: 'testbuyer@wit.edu', name: 'Test Buyer' },
-    { email: 'testseller@wit.edu', name: 'Test Seller' },
-    { email: 'testuser1@wit.edu', name: 'Test User 1' },
-    { email: 'testuser2@wit.edu', name: 'Test User 2' }
-  ];
-
-  const resetForm = () => {
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setError('');
-    setMessage('');
-  };
-
-  const switchMode = (mode) => {
-    setAuthMode(mode);
-    resetForm();
-  };
-
-  const validateEmail = (email) => {
-    return email.endsWith('@wit.edu');
-  };
-
-  const validatePassword = (password) => {
-    return password.length >= 6;
-  };
-
-  const handleTestUserLogin = async (testEmail) => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      // First, try to create the account
-      const { user } = await createUserWithEmailAndPassword(auth, testEmail, 'test123');
-      console.log(`✅ Created new test user: ${testEmail}`);
-      setMessage(`✅ Created test account for ${testEmail.split('@')[0]}!`);
-      
-      // Clear message after 1 second and proceed
-      setTimeout(() => {
-        setMessage('');
-        onAuth();
-      }, 1000);
-      
-    } catch (createError) {
-      if (createError.code === 'auth/email-already-in-use') {
-        // Account already exists, try to sign in
-        try {
-          await signInWithEmailAndPassword(auth, testEmail, 'test123');
-          console.log(`✅ Signed in as existing test user: ${testEmail}`);
-          onAuth();
-        } catch (signInError) {
-          console.error('Sign in error:', signInError);
-          setError(`Test account exists but sign-in failed. You can try manually: Email: ${testEmail}, Password: test123`);
-        }
-      } else {
-        console.error('Create user error:', createError);
-        setError('Failed to create test account: ' + createError.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const testUsers = ['testuser@wit.edu'];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
-
-    if (!validateEmail(email)) {
-      setError('Please use your WIT email address (@wit.edu)');
-      return;
-    }
-
-    if (authMode === 'signup' && password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if ((authMode === 'login' || authMode === 'signup') && !validatePassword(password)) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
-
+    setError("");
     setLoading(true);
 
+    if (!form.email || !form.password) {
+      setError("Please fill in all fields");
+      setLoading(false);
+      return;
+    }
+
+    if (!form.email.endsWith("@wit.edu")) {
+      setError("Please use a valid WIT email address");
+      setLoading(false);
+      return;
+    }
+
+    if (isSignUp && form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    if (form.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      setLoading(false);
+      return;
+    }
+
     try {
-      switch (authMode) {
-        case 'login':
-          await signInWithEmailAndPassword(auth, email, password);
-          onAuth();
-          break;
-
-        case 'signup':
-          const { user } = await createUserWithEmailAndPassword(auth, email, password);
-          
-          // Check if it's a test user (skip email verification)
-          if (testUsers.some(testUser => testUser.email === email)) {
-            console.log('Test user created - skipping email verification');
-            setMessage('✅ Test account created! You can now use the app.');
-            setTimeout(() => onAuth(), 2000);
-          } else {
-            await sendEmailVerification(user);
-            setMessage('✅ Account created! Please check your email to verify your account.');
-            setTimeout(() => switchMode('login'), 3000);
-          }
-          break;
-
-        case 'forgot':
-          await sendPasswordResetEmail(auth, email);
-          setMessage('✅ Password reset email sent! Check your inbox.');
-          setTimeout(() => switchMode('login'), 3000);
-          break;
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, form.email, form.password);
+      } else {
+        await signInWithEmailAndPassword(auth, form.email, form.password);
       }
+      onAuth();
     } catch (err) {
-      const errorMessages = {
-        'auth/user-not-found': 'No account found with this email address.',
-        'auth/wrong-password': 'Incorrect password. Please try again.',
-        'auth/email-already-in-use': 'An account already exists with this email.',
-        'auth/weak-password': 'Password should be at least 6 characters.',
-        'auth/invalid-email': 'Invalid email address format.',
-        'auth/too-many-requests': 'Too many failed attempts. Please wait before trying again.',
-        'auth/network-request-failed': 'Network error. Please check your connection.',
-        'auth/invalid-credential': 'Invalid email or password combination.',
-        'auth/user-disabled': 'This account has been disabled.',
-      };
-      setError(errorMessages[err.code] || 'An unexpected error occurred. Please try again.');
+      console.error("Auth error:", err);
+      setError(err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const getPageContent = () => {
-    switch (authMode) {
-      case 'signup':
-        return {
-          title: 'Join Campus Exchange',
-          subtitle: 'Create your account to start buying and selling with fellow WIT students',
-          buttonText: 'Create Account',
-          switchText: 'Already have an account?',
-          switchAction: 'Sign In'
-        };
-      case 'forgot':
-        return {
-          title: 'Reset Password',
-          subtitle: 'Enter your WIT email to receive a password reset link',
-          buttonText: 'Send Reset Link',
-          switchText: 'Remember your password?',
-          switchAction: 'Back to Sign In'
-        };
-      default:
-        return {
-          title: 'Welcome Back!',
-          subtitle: 'Sign in to access the WIT student marketplace',
-          buttonText: 'Sign In',
-          switchText: "Don't have an account?",
-          switchAction: 'Create Account'
-        };
-    }
+  const handleInputChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    if (error) setError("");
   };
-
-  const content = getPageContent();
 
   return (
     <div style={styles.container}>
-      <header style={styles.header}>
-        <div style={styles.headerContent}>
-          <h1 style={styles.logo}>
-            <span style={styles.logoIcon}>📦</span>
-            Campus Exchange
-          </h1>
-        </div>
-      </header>
-
-      <main style={styles.main}>
-        <div style={styles.authCard}>
-          <div style={styles.cardHeader}>
-            <h2 style={styles.title}>{content.title}</h2>
-            <p style={styles.subtitle}>{content.subtitle}</p>
-          </div>
-
-          {/* Test Users Section - FOR DEVELOPMENT */}
-          <div style={styles.testSection}>
-            <h3 style={styles.testTitle}>🧪 Quick Test Login</h3>
-            <p style={styles.testDescription}>For testing messaging between different users:</p>
-            <div style={styles.testButtons}>
-              {testUsers.map((testUser) => (
-                <button
-                  key={testUser.email}
-                  onClick={() => handleTestUserLogin(testUser.email)}
-                  disabled={loading}
-                  style={styles.testButton}
-                >
-                  {testUser.name}
-                  <span style={styles.testEmail}>{testUser.email}</span>
-                </button>
-              ))}
-            </div>
-            <div style={styles.divider}>
-              <span style={styles.dividerText}>OR</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>WIT Email Address</label>
-              <input
-                style={styles.input}
-                disabled={loading}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your.name@wit.edu"
-                required
-              />
-            </div>
-
-            {authMode !== 'forgot' && (
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Password</label>
-                <input
-                  style={styles.input}
-                  disabled={loading}
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={authMode === 'signup' ? 'At least 6 characters' : 'Your password'}
-                  required
-                />
-              </div>
-            )}
-
-            {authMode === 'signup' && (
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Confirm Password</label>
-                <input
-                  style={styles.input}
-                  disabled={loading}
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
-                  required
-                />
-              </div>
-            )}
-
-            {authMode === 'login' && (
-              <div style={styles.forgotPassword}>
-                <button
-                  type="button"
-                  onClick={() => switchMode('forgot')}
-                  style={styles.forgotLink}
-                >
-                  Forgot your password?
-                </button>
-              </div>
-            )}
-
-            {error && (
-              <div style={styles.errorMessage}>
-                <span style={styles.errorIcon}>⚠️</span>
-                {error}
-              </div>
-            )}
-
-            {message && (
-              <div style={styles.successMessage}>
-                <span style={styles.successIcon}>✅</span>
-                {message}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                ...styles.submitButton,
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {loading ? (
-                <>
-                  <span style={styles.loadingSpinner}>⏳</span>
-                  {authMode === 'forgot' ? 'Sending...' : authMode === 'signup' ? 'Creating Account...' : 'Signing In...'}
-                </>
-              ) : (
-                content.buttonText
-              )}
-            </button>
-          </form>
-
-          <div style={styles.switchSection}>
-            <p style={styles.switchText}>
-              {content.switchText}{' '}
-              <button
-                type="button"
-                onClick={() => switchMode(authMode === 'login' ? 'signup' : 'login')}
-                style={styles.switchLink}
-                disabled={loading}
-              >
-                {content.switchAction}
-              </button>
-            </p>
-
-            {authMode !== 'login' && (
-              <button
-                type="button"
-                onClick={() => switchMode('login')}
-                style={styles.backButton}
-                disabled={loading}
-              >
-                ← Back to Sign In
-              </button>
-            )}
-          </div>
-
-          {authMode === 'signup' && (
-            <div style={styles.termsSection}>
-              <p style={styles.termsText}>
-                By creating an account, you agree to follow WIT's student code of conduct
-                and Campus Exchange community guidelines.
-              </p>
-            </div>
-          )}
-        </div>
-      </main>
-
-      <footer style={styles.footer}>
-        <div style={styles.footerContent}>
-          <p style={styles.footerText}>© 2025 Campus Exchange • A WIT Student Initiative</p>
-          <p style={styles.footerSubtext}>
-            For support, contact: <a href="mailto:support@wit.edu" style={styles.footerLink}>support@wit.edu</a>
+      <div style={styles.card}>
+        <div style={styles.logo}>
+          <h1 style={styles.logoText}>Campus Exchange</h1>
+          <p style={styles.logoSubtext}>
+            {isSignUp ? "Create your account" : "Welcome Back!"}
+          </p>
+          <p style={styles.logoDescription}>
+            {isSignUp 
+              ? "Join the WIT student marketplace" 
+              : "Sign in to access the WIT student marketplace"
+            }
           </p>
         </div>
-      </footer>
+
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>WIT Email Address</label>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleInputChange}
+              placeholder="your.name@wit.edu"
+              style={styles.input}
+              disabled={loading}
+            />
+          </div>
+
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Password</label>
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleInputChange}
+              placeholder="Enter your password"
+              style={styles.input}
+              disabled={loading}
+            />
+          </div>
+
+          {isSignUp && (
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Confirm Password</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={form.confirmPassword}
+                onChange={handleInputChange}
+                placeholder="Confirm your password"
+                style={styles.input}
+                disabled={loading}
+              />
+            </div>
+          )}
+
+          {!isSignUp && (
+            <div style={styles.forgotPassword}>
+              <a href="#" style={styles.forgotLink}>Forgot your password?</a>
+            </div>
+          )}
+
+          {error && (
+            <div style={styles.error}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={styles.errorIcon}>
+                <circle cx="12" cy="12" r="10" stroke="#dc2626" strokeWidth="2"/>
+                <line x1="15" y1="9" x2="9" y2="15" stroke="#dc2626" strokeWidth="2"/>
+                <line x1="9" y1="9" x2="15" y2="15" stroke="#dc2626" strokeWidth="2"/>
+              </svg>
+              {error}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            style={{
+              ...styles.button,
+              ...(loading ? styles.buttonLoading : {})
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <div style={styles.loadingSpinner}>
+                <div style={styles.spinner}></div>
+                {isSignUp ? "Creating Account..." : "Signing In..."}
+              </div>
+            ) : (
+              isSignUp ? "Create Account" : "Sign In"
+            )}
+          </button>
+
+          <div style={styles.switchText}>
+            {isSignUp ? "Already have an account? " : "Don't have an account? "}
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError("");
+                setForm({ email: "", password: "", confirmPassword: "" });
+              }}
+              style={styles.switchLink}
+              disabled={loading}
+            >
+              {isSignUp ? "Sign In" : "Create Account"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -363,261 +183,147 @@ export default function Auth({ onAuth }) {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f8fafc',
-    display: 'flex',
-    flexDirection: 'column',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-  },
-  header: {
-    background: 'linear-gradient(135deg, #003366 0%, #004080 100%)',
-    color: 'white',
-    padding: '1rem 2rem',
-    boxShadow: '0 4px 12px rgba(0, 51, 102, 0.15)'
-  },
-  headerContent: {
-    maxWidth: '1200px',
-    margin: '0 auto'
-  },
-  logo: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    margin: 0,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem'
-  },
-  logoIcon: {
-    fontSize: '2rem'
-  },
-  main: {
-    flex: 1,
+    backgroundColor: '#ffffff',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
     padding: '2rem'
   },
-  authCard: {
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '3rem',
+  card: {
     width: '100%',
-    maxWidth: '500px',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #e2e8f0'
+    maxWidth: '400px',
+    padding: '3rem 2rem'
   },
-  cardHeader: {
+  logo: {
     textAlign: 'center',
-    marginBottom: '2rem'
+    marginBottom: '3rem'
   },
-  title: {
-    fontSize: '1.875rem',
-    fontWeight: '700',
-    color: '#1a202c',
-    marginBottom: '0.5rem'
-  },
-  subtitle: {
-    fontSize: '0.975rem',
-    color: '#64748b',
-    lineHeight: '1.5',
-    margin: 0
-  },
-  testSection: {
-    backgroundColor: '#f0f9ff',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    marginBottom: '2rem',
-    border: '1px solid #bae6fd'
-  },
-  testTitle: {
-    fontSize: '1rem',
+  logoText: {
+    fontSize: '1.75rem',
     fontWeight: '600',
-    color: '#0c4a6e',
-    marginBottom: '0.5rem'
+    letterSpacing: '-0.02em',
+    color: '#000000',
+    margin: '0 0 0.5rem 0'
   },
-  testDescription: {
-    fontSize: '0.875rem',
-    color: '#0c4a6e',
-    marginBottom: '1rem'
+  logoSubtext: {
+    fontSize: '1.25rem',
+    fontWeight: '500',
+    color: '#000000',
+    margin: '0 0 0.5rem 0',
+    letterSpacing: '-0.01em'
   },
-  testButtons: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem'
-  },
-  testButton: {
-    background: 'white',
-    border: '2px solid #bae6fd',
-    borderRadius: '8px',
-    padding: '0.75rem 1rem',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    textAlign: 'left',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  testEmail: {
-    fontSize: '0.75rem',
-    color: '#64748b',
-    marginTop: '0.25rem'
-  },
-  divider: {
-    display: 'flex',
-    alignItems: 'center',
-    margin: '1.5rem 0',
-    position: 'relative'
-  },
-  dividerText: {
-    backgroundColor: 'white',
-    color: '#64748b',
-    fontSize: '0.875rem',
-    padding: '0 1rem',
-    position: 'absolute',
-    left: '50%',
-    transform: 'translateX(-50%)'
+  logoDescription: {
+    fontSize: '0.9375rem',
+    color: '#666666',
+    margin: 0,
+    fontWeight: '400',
+    lineHeight: '1.4'
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.25rem'
+    gap: '1.5rem'
   },
-  formGroup: {
+  inputGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem'
   },
   label: {
     fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#374151'
+    fontWeight: '500',
+    color: '#000000',
+    letterSpacing: '-0.01em'
   },
   input: {
     padding: '0.875rem 1rem',
     fontSize: '1rem',
-    border: '2px solid #e2e8f0',
+    border: '1px solid #e5e5e5',
     borderRadius: '8px',
-    background: '#fff',
-    color: '#1a202c',
-    transition: 'border-color 0.2s',
-    outline: 'none'
+    backgroundColor: '#fafafa',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    fontWeight: '400',
+    color: '#000000'
   },
   forgotPassword: {
-    textAlign: 'right'
+    textAlign: 'right',
+    marginTop: '-0.5rem'
   },
   forgotLink: {
-    background: 'none',
+    fontSize: '0.875rem',
+    color: '#666666',
+    textDecoration: 'none',
+    fontWeight: '400',
+    transition: 'color 0.2s ease'
+  },
+  button: {
+    backgroundColor: '#000000',
+    color: '#ffffff',
     border: 'none',
-    color: '#003366',
-    fontSize: '0.875rem',
+    padding: '0.875rem 1rem',
+    fontSize: '0.9375rem',
+    fontWeight: '500',
+    borderRadius: '8px',
     cursor: 'pointer',
-    textDecoration: 'underline'
-  },
-  errorMessage: {
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fecaca',
-    color: '#dc2626',
-    padding: '0.875rem',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  },
-  errorIcon: {
-    fontSize: '1rem'
-  },
-  successMessage: {
-    backgroundColor: '#f0fdf4',
-    border: '1px solid #bbf7d0',
-    color: '#166534',
-    padding: '0.875rem',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
-  },
-  successIcon: {
-    fontSize: '1rem'
-  },
-  submitButton: {
-    backgroundColor: '#003366',
-    color: 'white',
-    border: 'none',
-    padding: '1rem',
-    borderRadius: '8px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'all 0.2s ease',
+    letterSpacing: '-0.01em',
+    marginTop: '0.5rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '0.5rem'
+    minHeight: '48px'
+  },
+  buttonLoading: {
+    opacity: 0.7,
+    cursor: 'not-allowed'
   },
   loadingSpinner: {
-    fontSize: '1rem'
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem'
   },
-  switchSection: {
-    marginTop: '2rem',
-    textAlign: 'center'
+  spinner: {
+    width: '16px',
+    height: '16px',
+    border: '2px solid transparent',
+    borderTop: '2px solid #ffffff',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite'
   },
   switchText: {
+    textAlign: 'center',
+    marginTop: '1.5rem',
     fontSize: '0.875rem',
-    color: '#64748b',
-    margin: 0,
-    marginBottom: '1rem'
+    color: '#666666',
+    fontWeight: '400'
   },
   switchLink: {
     background: 'none',
     border: 'none',
-    color: '#003366',
-    fontWeight: '600',
+    color: '#000000',
+    textDecoration: 'none',
+    fontWeight: '500',
     cursor: 'pointer',
-    textDecoration: 'underline'
-  },
-  backButton: {
-    background: 'none',
-    border: 'none',
-    color: '#64748b',
     fontSize: '0.875rem',
-    cursor: 'pointer',
-    padding: '0.5rem'
+    padding: 0,
+    transition: 'color 0.2s ease'
   },
-  termsSection: {
-    marginTop: '1.5rem',
-    paddingTop: '1.5rem',
-    borderTop: '1px solid #e2e8f0'
-  },
-  termsText: {
-    fontSize: '0.75rem',
-    color: '#64748b',
-    lineHeight: '1.5',
-    textAlign: 'center',
-    margin: 0
-  },
-  footer: {
-    backgroundColor: '#f1f5f9',
-    padding: '1.5rem',
-    borderTop: '1px solid #e2e8f0'
-  },
-  footerContent: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    textAlign: 'center'
-  },
-  footerText: {
+  error: {
+    backgroundColor: '#fef2f2',
+    color: '#dc2626',
+    padding: '0.875rem 1rem',
+    borderRadius: '8px',
     fontSize: '0.875rem',
-    color: '#374151',
-    margin: 0,
-    marginBottom: '0.25rem'
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    border: '1px solid #fecaca',
+    fontWeight: '400'
   },
-  footerSubtext: {
-    fontSize: '0.75rem',
-    color: '#64748b',
-    margin: 0
-  },
-  footerLink: {
-    color: '#003366',
-    textDecoration: 'none'
+  errorIcon: {
+    flexShrink: 0
   }
 };
+

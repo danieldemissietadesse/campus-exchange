@@ -1,3 +1,4 @@
+// src/app/page.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,7 +6,7 @@ import { auth } from "./firebaseConfig";
 import { onAuthStateChanged, reload } from "firebase/auth";
 import { streamListings, streamMessages } from "@/lib/api";
 
-// Import separate components
+// Import components (these will also need updating)
 import Auth from "@/components/Auth";
 import VerificationPage from "@/components/VerificationPage";
 import MessagesList from "@/components/MessagesList";
@@ -15,16 +16,12 @@ import ListingDetailModal from "@/components/ListingDetailModal";
 import MessageModal from "@/components/MessageModal";
 
 export default function HomePage() {
-  // Auth state
+  // [State management remains the same]
   const [user, setUser] = useState(null);
   const [authed, setAuthed] = useState(false);
-
-  // Data state
   const [listings, setListings] = useState([]);
   const [messages, setMessages] = useState([]);
   const [filteredListings, setFilteredListings] = useState([]);
-
-  // UI state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [showModal, setShowModal] = useState(false);
@@ -35,21 +32,20 @@ export default function HomePage() {
 
   const categories = ["All", "Textbooks", "Electronics", "Furniture", "Clothing", "Dorm Supplies", "Other"];
 
-  // Auth effect
+  // [All useEffects remain the same]
   useEffect(() => {
     const off = onAuthStateChanged(auth, async (u) => {
       if (!u) return setUser(null);
       await reload(u);
       setUser(u);
       
-      // Test users that bypass email verification - FOR DEVELOPMENT ONLY!
       const testUsers = [
         'testuser@wit.edu',
         'testbuyer@wit.edu', 
         'testseller@wit.edu',
         'testuser1@wit.edu',
         'testuser2@wit.edu',
-        'demissied@wit.edu'  // Your main account
+        'demissied@wit.edu'
       ];
       
       if (testUsers.includes(u.email)) {
@@ -62,14 +58,12 @@ export default function HomePage() {
     return () => off();
   }, []);
 
-  // Data streams
   useEffect(() => {
     if (!authed) return;
     const unsub = streamListings(setListings);
     return () => unsub();
   }, [authed]);
 
-  // FIXED: Message streaming useEffect
   useEffect(() => {
     if (!authed || !user?.uid) {
       console.log('⏭️ Skipping message stream setup - user not ready:', { authed, uid: user?.uid });
@@ -78,7 +72,6 @@ export default function HomePage() {
     
     console.log('🚀 Setting up message stream for user:', user.uid);
     
-    // Create a stable callback that won't change on every render
     const handleMessageUpdate = (newMessages) => {
       console.log('📨 Message update received:', newMessages.length, 'messages');
       setMessages(newMessages);
@@ -92,16 +85,14 @@ export default function HomePage() {
         unsub();
       }
     };
-  }, [authed, user?.uid]); // Only depend on essential values
+  }, [authed, user?.uid]);
 
-  // ALSO ADD: Debug effect to monitor message state changes
   useEffect(() => {
     console.log(`📊 Messages state updated: ${messages.length} total messages`);
     const unreadCount = messages.filter(m => !m.read && m.recipientId === user?.uid).length;
     console.log(`📬 Unread messages: ${unreadCount}`);
   }, [messages, user?.uid]);
 
-  // Filter listings
   useEffect(() => {
     let filtered = listings;
     
@@ -132,19 +123,6 @@ export default function HomePage() {
       setShowProfile(false);
       setShowMessages(false);
     }
-  };
-
-  const getCategoryIcon = (category) => {
-    const icons = {
-      "All": "🏪",
-      "Textbooks": "📚",
-      "Electronics": "💻",
-      "Furniture": "🪑",
-      "Clothing": "👕",
-      "Dorm Supplies": "🏠",
-      "Other": "📦"
-    };
-    return icons[category] || "📦";
   };
 
   const formatDate = (timestamp) => {
@@ -186,21 +164,18 @@ export default function HomePage() {
             style={styles.logo}
             onClick={() => handleViewChange('home')}
           >
-            <span style={styles.logoIcon}>📦</span>
             <span style={styles.logoText}>Campus Exchange</span>
           </div>
           
-          <div style={styles.headerActions}>
-            <span style={styles.userEmail}>{user.email}</span>
-            
+          <nav style={styles.nav}>
             <button 
               onClick={() => handleViewChange(showMessages ? 'home' : 'messages')}
               style={{
-                ...styles.headerButton,
-                backgroundColor: showMessages ? 'rgba(255,255,255,0.2)' : 'transparent'
+                ...styles.navButton,
+                ...(showMessages ? styles.navButtonActive : {})
               }}
             >
-              💬 Messages
+              Messages
               {unreadCount > 0 && (
                 <span style={styles.badge}>{unreadCount}</span>
               )}
@@ -209,20 +184,22 @@ export default function HomePage() {
             <button 
               onClick={() => handleViewChange(showProfile ? 'home' : 'profile')}
               style={{
-                ...styles.headerButton,
-                backgroundColor: showProfile ? 'rgba(255,255,255,0.2)' : 'transparent'
+                ...styles.navButton,
+                ...(showProfile ? styles.navButtonActive : {})
               }}
             >
-              👤 Profile
+              Profile
             </button>
+            
+            <span className="user-email" style={styles.userEmail}>{user.email}</span>
             
             <button 
               onClick={() => auth.signOut()} 
-              style={styles.logoutButton}
+              style={styles.signOutButton}
             >
-              Logout
+              Sign Out
             </button>
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -246,52 +223,46 @@ export default function HomePage() {
         {/* Main Marketplace View */}
         {!showMessages && !showProfile && (
           <>
-            {/* Search Section */}
-            <div style={styles.searchSection}>
-              <div style={styles.searchHeader}>
-                <h2 style={styles.searchTitle}>🛍️ WIT Student Marketplace</h2>
-                <button 
-                  onClick={() => setShowModal(true)}
-                  style={styles.postButton}
-                  onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-                  onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
-                >
-                  ✨ Post New Item
-                </button>
+            {/* Hero Section */}
+            <div style={styles.hero}>
+              <h1 style={styles.heroTitle}>WIT Student Marketplace</h1>
+              <p style={styles.heroSubtitle}>Buy and sell with your campus community</p>
+              
+              {/* Search Bar */}
+              <div style={styles.searchContainer}>
+                <input 
+                  type="text" 
+                  placeholder="Search for items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={styles.searchInput}
+                />
+                <svg style={styles.searchIcon} width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M9 17A8 8 0 1 0 9 1a8 8 0 0 0 0 16zM19 19l-4.35-4.35" stroke="#999" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
               </div>
               
-              <div style={styles.searchControls}>
-                <div style={styles.searchInputContainer}>
-                  <span style={styles.searchIcon}>🔍</span>
-                  <input 
-                    type="text" 
-                    placeholder="Search for textbooks, furniture, electronics..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={styles.searchInput}
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      style={styles.clearButton}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-              
+              <button 
+                onClick={() => setShowModal(true)}
+                style={styles.postButton}
+              >
+                Post New Item
+              </button>
+            </div>
+
+            {/* Categories */}
+            <div style={styles.categoriesSection}>
               <div style={styles.categories}>
                 {categories.map(category => (
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
                     style={{
-                      ...styles.categoryChip,
-                      ...(selectedCategory === category ? styles.activeCategoryChip : {})
+                      ...styles.categoryPill,
+                      ...(selectedCategory === category ? styles.categoryPillActive : {})
                     }}
                   >
-                    {getCategoryIcon(category)} {category}
+                    {category}
                   </button>
                 ))}
               </div>
@@ -299,10 +270,12 @@ export default function HomePage() {
 
             {/* Listings Grid */}
             <div style={styles.listingsSection}>
-              <h3 style={styles.listingsTitle}>
-                {selectedCategory === "All" ? "All Items" : selectedCategory} 
-                <span style={styles.listingsCount}>({filteredListings.length})</span>
-              </h3>
+              <div style={styles.listingsHeader}>
+                <h2 style={styles.listingsTitle}>
+                  {selectedCategory === "All" ? "All Items" : selectedCategory}
+                </h2>
+                <span style={styles.listingsCount}>{filteredListings.length} items</span>
+              </div>
               
               {filteredListings.length > 0 ? (
                 <div style={styles.grid}>
@@ -314,33 +287,21 @@ export default function HomePage() {
                         setSelectedListing(listing);
                         setShowMessageModal(false);
                       }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-4px)';
-                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.15)';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                      }}
                     >
                       <div style={styles.cardImage}>
                         {listing.imageUrls && listing.imageUrls.length > 0 ? (
-                          <>
-                            <img 
-                              src={listing.imageUrls[0]} 
-                              alt={listing.title} 
-                              style={styles.cardImageImg}
-                            />
-                            {listing.imageUrls.length > 1 && (
-                              <div style={styles.imageCount}>
-                                +{listing.imageUrls.length - 1} more
-                              </div>
-                            )}
-                          </>
+                          <img 
+                            src={listing.imageUrls[0]} 
+                            alt={listing.title} 
+                            style={styles.cardImageImg}
+                          />
                         ) : (
                           <div style={styles.noImage}>
-                            <span style={styles.noImageIcon}>📷</span>
-                            <span style={styles.noImageText}>No Image</span>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                              <path d="M21 15V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V9" stroke="#ccc" strokeWidth="1.5"/>
+                              <circle cx="9" cy="9" r="3" stroke="#ccc" strokeWidth="1.5"/>
+                              <path d="M21 15L17 11L5 23" stroke="#ccc" strokeWidth="1.5"/>
+                            </svg>
                           </div>
                         )}
                       </div>
@@ -348,20 +309,9 @@ export default function HomePage() {
                       <div style={styles.cardContent}>
                         <h3 style={styles.cardTitle}>{listing.title}</h3>
                         <p style={styles.cardPrice}>${listing.price}</p>
-                        
-                        <div style={styles.cardMeta}>
-                          <span style={styles.cardCategory}>
-                            {getCategoryIcon(listing.category)} {listing.category}
-                          </span>
-                          <span style={styles.cardDate}>
-                            {formatDate(listing.createdAt)}
-                          </span>
-                        </div>
-                        
                         <div style={styles.cardFooter}>
-                          <span style={styles.sellerInfo}>
-                            By {listing.userEmail?.split('@')[0]}
-                          </span>
+                          <span style={styles.cardMeta}>{listing.category}</span>
+                          <span style={styles.cardMeta}>{formatDate(listing.createdAt)}</span>
                         </div>
                       </div>
                     </div>
@@ -369,13 +319,13 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div style={styles.emptyState}>
-                  <span style={styles.emptyIcon}>🔍</span>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    <path d="M11 6L13 6M11 12L13 12M11 18L13 18" stroke="#ccc" strokeWidth="2" strokeLinecap="round"/>
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke="#ccc" strokeWidth="1.5"/>
+                  </svg>
                   <h3 style={styles.emptyTitle}>No items found</h3>
                   <p style={styles.emptyText}>
-                    Try adjusting your search or browse different categories
-                  </p>
-                  <p style={styles.emptySubtext}>
-                    Be the first to post in this category!
+                    Try adjusting your filters or be the first to post
                   </p>
                 </div>
               )}
@@ -409,29 +359,16 @@ export default function HomePage() {
         />
       )}
 
-      {/* Footer */}
-      <footer style={styles.footer}>
-        <div style={styles.footerContent}>
-          <div style={styles.footerMain}>
-            <div style={styles.footerBrand}>
-              <span style={styles.footerLogo}>📦</span>
-              <span style={styles.footerTitle}>Campus Exchange</span>
-            </div>
-            <p style={styles.footerDescription}>
-              WIT's exclusive student marketplace for buying and selling items safely within our verified community.
-            </p>
-          </div>
-          
-          <div style={styles.footerBottom}>
-            <p style={styles.copyright}>
-              © 2025 Campus Exchange • A WIT Student Initiative
-            </p>
-            <p style={styles.disclaimer}>
-              Exclusively for WIT students with verified @wit.edu emails
-            </p>
-          </div>
-        </div>
-      </footer>
+      <style jsx>{`
+        @media (max-width: 768px) {
+          .user-email {
+            display: none;
+          }
+          header, nav button, .logoText {
+            font-size: 0.875rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -439,401 +376,273 @@ export default function HomePage() {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f8fafc',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    display: 'flex',
-    flexDirection: 'column',
-    color: '#1a202c'
+    backgroundColor: '#ffffff',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
+    color: '#000000'
   },
   header: {
-    background: 'linear-gradient(135deg, #003366 0%, #004080 100%)',
-    color: 'white',
-    padding: '1rem 2rem',
-    boxShadow: '0 4px 12px rgba(0, 51, 102, 0.15)',
+    backgroundColor: '#ffffff',
+    borderBottom: '1px solid #f0f0f0',
     position: 'sticky',
     top: 0,
-    zIndex: 100
+    zIndex: 100,
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    background: 'rgba(255, 255, 255, 0.85)'
   },
   headerContent: {
     maxWidth: '1200px',
     margin: '0 auto',
+    padding: '1rem 2rem',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center'
   },
   logo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    cursor: 'pointer',
-    transition: 'opacity 0.2s'
-  },
-  logoIcon: {
-    fontSize: '2rem'
+    cursor: 'pointer'
   },
   logoText: {
-    letterSpacing: '-0.025em'
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    letterSpacing: '-0.02em',
+    color: '#000000'
   },
-  headerActions: {
+  nav: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1rem'
+    gap: '2rem'
   },
-  userEmail: {
-    fontSize: '0.875rem',
-    opacity: 0.9,
-    fontWeight: '500'
-  },
-  headerButton: {
+  navButton: {
     background: 'none',
-    border: '2px solid rgba(255,255,255,0.3)',
-    color: 'white',
-    padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
+    border: 'none',
+    color: '#666666',
+    fontSize: '0.9375rem',
     fontWeight: '500',
-    transition: 'all 0.2s',
+    cursor: 'pointer',
+    padding: '0.5rem 0',
     position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
+    transition: 'color 0.2s ease',
+    letterSpacing: '-0.01em'
   },
-  logoutButton: {
-    background: 'rgba(239, 68, 68, 0.1)',
-    border: '2px solid rgba(239, 68, 68, 0.3)',
-    color: 'white',
-    padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s'
+  navButtonActive: {
+    color: '#000000'
   },
   badge: {
     position: 'absolute',
-    top: '-8px',
-    right: '-8px',
-    backgroundColor: '#ef4444',
-    color: 'white',
-    borderRadius: '50%',
-    width: '20px',
-    height: '20px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.75rem',
-    fontWeight: 'bold'
+    top: '-4px',
+    right: '-16px',
+    backgroundColor: '#000000',
+    color: '#ffffff',
+    borderRadius: '10px',
+    padding: '2px 6px',
+    fontSize: '0.6875rem',
+    fontWeight: '600',
+    minWidth: '18px',
+    textAlign: 'center'
+  },
+  userEmail: {
+    fontSize: '0.875rem',
+    color: '#666666',
+    fontWeight: '400'
+  },
+  signOutButton: {
+    background: 'none',
+    border: '1px solid #e5e5e5',
+    color: '#666666',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    padding: '0.5rem 1rem',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
   },
   main: {
-    flex: 1,
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '2rem',
-    width: '100%'
+    padding: '0 2rem'
   },
-  searchSection: {
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '2rem',
-    marginBottom: '2rem',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #e2e8f0'
+  hero: {
+    textAlign: 'center',
+    padding: '4rem 0',
+    borderBottom: '1px solid #f0f0f0'
   },
-  searchHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1.5rem',
-    flexWrap: 'wrap',
-    gap: '1rem'
-  },
-  searchTitle: {
-    fontSize: '1.75rem',
+  heroTitle: {
+    fontSize: '3rem',
     fontWeight: '700',
-    margin: 0,
-    color: '#1a202c',
-    background: 'linear-gradient(135deg, #003366 0%, #10b981 100%)',
-    backgroundClip: 'text',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent'
+    letterSpacing: '-0.03em',
+    margin: '0 0 0.5rem 0',
+    color: '#000000'
   },
-  postButton: {
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '0.875rem 1.75rem',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: '600',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
+  heroSubtitle: {
+    fontSize: '1.25rem',
+    color: '#666666',
+    margin: '0 0 3rem 0',
+    fontWeight: '400'
   },
-  searchControls: {
-    marginBottom: '1.5rem'
-  },
-  searchInputContainer: {
+  searchContainer: {
     position: 'relative',
-    display: 'flex',
-    alignItems: 'center'
+    maxWidth: '500px',
+    margin: '0 auto 2rem'
+  },
+  searchInput: {
+    width: '100%',
+    padding: '1rem 1rem 1rem 3rem',
+    fontSize: '1rem',
+    border: '1px solid #e5e5e5',
+    borderRadius: '10px',
+    backgroundColor: '#f8f8f8',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    fontWeight: '400'
   },
   searchIcon: {
     position: 'absolute',
     left: '1rem',
-    fontSize: '1.125rem',
-    color: '#64748b',
-    zIndex: 1
+    top: '50%',
+    transform: 'translateY(-50%)',
+    pointerEvents: 'none'
   },
-  searchInput: {
-    width: '100%',
-    padding: '1rem 1.25rem 1rem 3rem',
-    border: '2px solid #e2e8f0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    color: '#1a202c',
-    backgroundColor: '#f8fafc',
-    transition: 'all 0.2s',
-    outline: 'none'
-  },
-  clearButton: {
-    position: 'absolute',
-    right: '1rem',
-    background: '#ef4444',
-    color: 'white',
+  postButton: {
+    backgroundColor: '#000000',
+    color: '#ffffff',
     border: 'none',
-    borderRadius: '50%',
-    width: '24px',
-    height: '24px',
+    padding: '0.875rem 2rem',
+    fontSize: '0.9375rem',
+    fontWeight: '500',
+    borderRadius: '8px',
     cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '0.875rem',
-    transition: 'all 0.2s'
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    letterSpacing: '-0.01em'
+  },
+  categoriesSection: {
+    padding: '2rem 0',
+    borderBottom: '1px solid #f0f0f0'
   },
   categories: {
     display: 'flex',
     gap: '0.75rem',
+    justifyContent: 'center',
     flexWrap: 'wrap'
   },
-  categoryChip: {
-    padding: '0.625rem 1.25rem',
-    backgroundColor: '#f1f5f9',
-    border: '2px solid #e2e8f0',
-    borderRadius: '25px',
-    cursor: 'pointer',
+  categoryPill: {
+    background: 'none',
+    border: '1px solid #e5e5e5',
+    color: '#666666',
+    padding: '0.5rem 1.25rem',
+    borderRadius: '20px',
     fontSize: '0.875rem',
     fontWeight: '500',
-    transition: 'all 0.2s',
-    color: '#475569',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    letterSpacing: '-0.01em'
   },
-  activeCategoryChip: {
-    backgroundColor: '#003366',
-    color: 'white',
-    borderColor: '#003366',
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 8px rgba(0, 51, 102, 0.25)'
+  categoryPillActive: {
+    backgroundColor: '#000000',
+    color: '#ffffff',
+    borderColor: '#000000'
   },
   listingsSection: {
-    marginTop: '1rem'
+    padding: '3rem 0 4rem'
+  },
+  listingsHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: '2rem'
   },
   listingsTitle: {
-    fontSize: '1.375rem',
+    fontSize: '1.75rem',
     fontWeight: '600',
-    marginBottom: '1.5rem',
-    color: '#1a202c',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem'
+    letterSpacing: '-0.02em',
+    margin: 0,
+    color: '#000000'
   },
   listingsCount: {
-    fontSize: '1rem',
-    fontWeight: '400',
-    color: '#64748b'
+    fontSize: '0.9375rem',
+    color: '#999999',
+    fontWeight: '400'
   },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '1.5rem',
-    marginTop: '1rem'
+    gap: '1.5rem'
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: '16px',
+    backgroundColor: '#ffffff',
+    border: '1px solid #f0f0f0',
+    borderRadius: '12px',
     overflow: 'hidden',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #e2e8f0',
-    transition: 'all 0.3s ease',
     cursor: 'pointer',
-    position: 'relative'
+    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
   },
   cardImage: {
     width: '100%',
-    height: '200px',
-    backgroundColor: '#f1f5f9',
+    height: '240px',
+    backgroundColor: '#fafafa',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden'
+    borderBottom: '1px solid #f0f0f0'
   },
   cardImageImg: {
     width: '100%',
     height: '100%',
     objectFit: 'cover'
   },
-  imageCount: {
-    position: 'absolute',
-    bottom: '0.75rem',
-    right: '0.75rem',
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    color: 'white',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: '600'
-  },
   noImage: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     gap: '0.5rem',
-    color: '#94a3b8'
-  },
-  noImageIcon: {
-    fontSize: '2rem'
-  },
-  noImageText: {
-    fontSize: '0.875rem',
-    fontWeight: '500'
+    color: '#cccccc'
   },
   cardContent: {
     padding: '1.25rem'
   },
   cardTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
+    fontSize: '1rem',
+    fontWeight: '500',
     marginBottom: '0.5rem',
-    color: '#1a202c',
+    color: '#000000',
+    letterSpacing: '-0.01em',
     lineHeight: '1.4',
     display: '-webkit-box',
-    WebkitLineClamp: 2,
+    WebkitLineClamp: 1,
     WebkitBoxOrient: 'vertical',
     overflow: 'hidden'
   },
   cardPrice: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    color: '#10b981',
-    marginBottom: '0.75rem'
-  },
-  cardMeta: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '0.875rem',
-    marginBottom: '0.75rem'
-  },
-  cardCategory: {
-    fontWeight: '500',
-    color: '#475569',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.25rem'
-  },
-  cardDate: {
-    color: '#64748b',
-    fontStyle: 'italic'
+    fontSize: '1.375rem',
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: '0.75rem',
+    letterSpacing: '-0.02em'
   },
   cardFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
     paddingTop: '0.75rem',
-    borderTop: '1px solid #f1f5f9'
+    borderTop: '1px solid #f5f5f5'
   },
-  sellerInfo: {
-    fontSize: '0.875rem',
-    color: '#64748b',
-    fontWeight: '500'
+  cardMeta: {
+    fontSize: '0.8125rem',
+    color: '#999999',
+    fontWeight: '400'
   },
   emptyState: {
     textAlign: 'center',
     padding: '4rem 2rem',
-    color: '#64748b'
-  },
-  emptyIcon: {
-    fontSize: '4rem',
-    display: 'block',
-    marginBottom: '1rem'
+    color: '#999999'
   },
   emptyTitle: {
     fontSize: '1.25rem',
-    fontWeight: '600',
-    marginBottom: '0.5rem',
-    color: '#374151'
+    fontWeight: '500',
+    margin: '1rem 0 0.5rem',
+    color: '#666666'
   },
   emptyText: {
-    fontSize: '1rem',
-    marginBottom: '0.5rem'
-  },
-  emptySubtext: {
-    fontSize: '0.875rem',
-    fontStyle: 'italic'
-  },
-  footer: {
-    backgroundColor: '#f8fafc',
-    borderTop: '1px solid #e2e8f0',
-    marginTop: 'auto'
-  },
-  footerContent: {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '2rem'
-  },
-  footerMain: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-    marginBottom: '1.5rem'
-  },
-  footerBrand: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem'
-  },
-  footerLogo: {
-    fontSize: '1.5rem'
-  },
-  footerTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    color: '#1a202c'
-  },
-  footerDescription: {
-    color: '#64748b',
-    lineHeight: '1.6',
-    fontSize: '0.875rem'
-  },
-  footerBottom: {
-    borderTop: '1px solid #e2e8f0',
-    paddingTop: '1.5rem',
-    textAlign: 'center'
-  },
-  copyright: {
-    fontSize: '0.875rem',
-    color: '#374151',
-    margin: 0,
-    marginBottom: '0.25rem'
-  },
-  disclaimer: {
-    fontSize: '0.75rem',
-    color: '#64748b',
+    fontSize: '0.9375rem',
+    color: '#999999',
     margin: 0
   }
 };

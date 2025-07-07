@@ -1,4 +1,4 @@
-// src/components/MessageModal.js
+// src/components/MessageModal.js - UPDATED MINIMAL DESIGN
 import { useState } from 'react';
 import { sendMessage } from '@/lib/api';
 
@@ -29,20 +29,19 @@ export default function MessageModal({ listing, currentUser, onClose }) {
       onClose();
       setMessageText('');
       
-      // Success notification
       const notification = document.createElement('div');
-      notification.textContent = '✅ Message sent successfully!';
+      notification.textContent = 'Message sent successfully';
       notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #10b981;
+        background: #000000;
         color: white;
         padding: 1rem 1.5rem;
         border-radius: 8px;
         z-index: 10000;
         font-weight: 500;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        font-size: 0.875rem;
       `;
       document.body.appendChild(notification);
       setTimeout(() => notification.remove(), 3000);
@@ -55,33 +54,22 @@ export default function MessageModal({ listing, currentUser, onClose }) {
     }
   };
 
-  const getCategoryIcon = (category) => {
-    const icons = {
-      "Textbooks": "📚",
-      "Electronics": "💻",
-      "Furniture": "🪑",
-      "Clothing": "👕",
-      "Dorm Supplies": "🏠",
-      "Other": "📦"
-    };
-    return icons[category] || "📦";
-  };
-
   const quickMessages = [
-    "Hi! Is this item still available?",
-    "I'm interested in this item. When can I pick it up?",
-    "What's the condition of this item?",
-    "Would you consider a lower price?",
-    "Can you provide more details about this item?"
+    "Hi! Is this still available?",
+    "I'm interested. When can I pick it up?",
+    "What's the condition?",
+    "Would you consider a lower price?"
   ];
 
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
-          <h2 style={styles.title}>💬 Send Message</h2>
+          <h2 style={styles.title}>Send Message</h2>
           <button onClick={onClose} style={styles.closeButton}>
-            ✕
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6L18 18" stroke="#666666" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </button>
         </div>
 
@@ -97,26 +85,27 @@ export default function MessageModal({ listing, currentUser, onClose }) {
                 />
               ) : (
                 <div style={styles.noImage}>
-                  <span>📷</span>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V9" stroke="#ccc" strokeWidth="1.5"/>
+                    <circle cx="9" cy="9" r="3" stroke="#ccc" strokeWidth="1.5"/>
+                    <path d="M21 15L17 11L5 23" stroke="#ccc" strokeWidth="1.5"/>
+                  </svg>
                 </div>
               )}
             </div>
             <div style={styles.listingDetails}>
               <h3 style={styles.listingTitle}>{listing.title}</h3>
               <p style={styles.listingPrice}>${listing.price}</p>
-              <p style={styles.listingCategory}>
-                {getCategoryIcon(listing.category)} {listing.category}
-              </p>
-              <p style={styles.sellerInfo}>
-                <strong>To:</strong> {listing.userEmail}
+              <p style={styles.listingMeta}>
+                To: {listing.userEmail}
               </p>
             </div>
           </div>
 
-          {/* Quick Message Options */}
+          {/* Quick Messages */}
           <div style={styles.quickMessages}>
-            <h4 style={styles.quickTitle}>Quick Messages:</h4>
-            <div style={styles.quickButtons}>
+            <h4 style={styles.quickTitle}>Quick Messages</h4>
+            <div style={styles.quickGrid}>
               {quickMessages.map((msg, index) => (
                 <button
                   key={index}
@@ -133,12 +122,12 @@ export default function MessageModal({ listing, currentUser, onClose }) {
           {/* Message Form */}
           <form onSubmit={handleSendMessage} style={styles.form}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Your Message:</label>
+              <label style={styles.label}>Your Message</label>
               <textarea
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 style={styles.textarea}
-                placeholder="Type your message here..."
+                placeholder="Type your message..."
                 rows="6"
                 required
                 autoFocus
@@ -154,21 +143,11 @@ export default function MessageModal({ listing, currentUser, onClose }) {
                 disabled={!messageText.trim() || isSending}
                 style={{
                   ...styles.sendButton,
-                  opacity: (!messageText.trim() || isSending) ? 0.6 : 1,
+                  opacity: (!messageText.trim() || isSending) ? 0.5 : 1,
                   cursor: (!messageText.trim() || isSending) ? 'not-allowed' : 'pointer'
                 }}
               >
-                {isSending ? (
-                  <>
-                    <span style={styles.loadingSpinner}>⏳</span>
-                    Sending...
-                  </>
-                ) : (
-                  <>
-                    <span>📤</span>
-                    Send Message
-                  </>
-                )}
+                {isSending ? 'Sending...' : 'Send Message'}
               </button>
               
               <button
@@ -181,17 +160,6 @@ export default function MessageModal({ listing, currentUser, onClose }) {
               </button>
             </div>
           </form>
-
-          {/* Tips */}
-          <div style={styles.tips}>
-            <h4 style={styles.tipsTitle}>💡 Messaging Tips:</h4>
-            <ul style={styles.tipsList}>
-              <li>Be polite and respectful in your communication</li>
-              <li>Ask specific questions about the item</li>
-              <li>Arrange safe meeting locations on campus</li>
-              <li>Respond promptly to keep the conversation going</li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>
@@ -205,66 +173,66 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
-    padding: '1rem'
+    padding: '2rem'
   },
   modal: {
-    backgroundColor: 'white',
+    backgroundColor: '#ffffff',
     borderRadius: '16px',
-    width: '90%',
-    maxWidth: '600px',
+    width: '100%',
+    maxWidth: '500px',
     maxHeight: '90vh',
     overflow: 'auto',
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
   },
   header: {
-    padding: '1.5rem 1.5rem 0 1.5rem',
+    padding: '2rem 2rem 0',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottom: '1px solid #e2e8f0'
+    alignItems: 'center'
   },
   title: {
     fontSize: '1.5rem',
-    fontWeight: '700',
-    color: '#1a202c',
-    margin: 0
+    fontWeight: '600',
+    letterSpacing: '-0.02em',
+    margin: 0,
+    color: '#000000'
   },
   closeButton: {
     background: 'none',
     border: 'none',
-    fontSize: '1.5rem',
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     cursor: 'pointer',
-    color: '#64748b',
-    padding: '0.5rem',
-    borderRadius: '8px',
-    transition: 'all 0.2s'
+    transition: 'background-color 0.2s ease'
   },
   content: {
-    padding: '1.5rem'
+    padding: '2rem'
   },
   listingInfo: {
     display: 'flex',
     gap: '1rem',
-    marginBottom: '1.5rem',
     padding: '1rem',
-    backgroundColor: '#f8fafc',
-    borderRadius: '12px',
-    border: '1px solid #e2e8f0'
+    backgroundColor: '#fafafa',
+    borderRadius: '8px',
+    marginBottom: '1.5rem',
+    border: '1px solid #f0f0f0'
   },
   listingImage: {
-    width: '80px',
-    height: '80px',
-    borderRadius: '8px',
+    width: '60px',
+    height: '60px',
+    borderRadius: '6px',
     overflow: 'hidden',
-    backgroundColor: '#f1f5f9',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
+    backgroundColor: '#f0f0f0',
+    flexShrink: 0
   },
   listingImg: {
     width: '100%',
@@ -272,8 +240,12 @@ const styles = {
     objectFit: 'cover'
   },
   noImage: {
-    color: '#94a3b8',
-    fontSize: '1.5rem'
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#cccccc'
   },
   listingDetails: {
     flex: 1,
@@ -282,83 +254,83 @@ const styles = {
     gap: '0.25rem'
   },
   listingTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#1a202c',
-    margin: 0,
-    lineHeight: '1.4'
+    fontSize: '0.9375rem',
+    fontWeight: '500',
+    color: '#000000',
+    margin: 0
   },
   listingPrice: {
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    color: '#10b981',
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#000000',
     margin: 0
   },
-  listingCategory: {
-    fontSize: '0.875rem',
-    color: '#64748b',
-    margin: 0
-  },
-  sellerInfo: {
-    fontSize: '0.875rem',
-    color: '#475569',
+  listingMeta: {
+    fontSize: '0.8125rem',
+    color: '#666666',
     margin: 0
   },
   quickMessages: {
     marginBottom: '1.5rem'
   },
   quickTitle: {
-    fontSize: '1rem',
+    fontSize: '0.875rem',
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: '0.75rem'
+    color: '#000000',
+    marginBottom: '0.75rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em'
   },
-  quickButtons: {
+  quickGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '0.5rem'
+  },
+  quickButton: {
+    padding: '0.75rem',
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e5e5',
+    borderRadius: '6px',
+    fontSize: '0.8125rem',
+    color: '#333333',
+    textAlign: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    fontWeight: '400'
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem'
+  },
+  formGroup: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.5rem'
   },
-  quickButton: {
-    background: '#f1f5f9',
-    border: '1px solid #e2e8f0',
-    color: '#475569',
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    textAlign: 'left',
-    transition: 'all 0.2s'
-  },
-  form: {
-    marginBottom: '1.5rem'
-  },
-  formGroup: {
-    marginBottom: '1.5rem'
-  },
   label: {
-    display: 'block',
     fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '0.5rem'
+    fontWeight: '500',
+    color: '#000000',
+    letterSpacing: '-0.01em'
   },
   textarea: {
-    width: '100%',
-    padding: '1rem',
-    border: '2px solid #e2e8f0',
-    borderRadius: '12px',
-    fontSize: '1rem',
-    color: '#1a202c',
-    backgroundColor: 'white',
+    padding: '0.875rem',
+    fontSize: '0.9375rem',
+    border: '1px solid #e5e5e5',
+    borderRadius: '8px',
+    backgroundColor: '#fafafa',
     outline: 'none',
-    fontFamily: 'inherit',
+    minHeight: '120px',
     resize: 'vertical',
-    transition: 'border-color 0.2s'
+    fontFamily: 'inherit',
+    transition: 'border-color 0.2s ease',
+    color: '#000000',
+    lineHeight: '1.5'
   },
   charCount: {
     fontSize: '0.75rem',
-    color: '#64748b',
-    marginTop: '0.5rem',
+    color: '#999999',
     textAlign: 'right'
   },
   actions: {
@@ -367,52 +339,28 @@ const styles = {
   },
   sendButton: {
     flex: 1,
-    background: 'linear-gradient(135deg, #003366 0%, #004080 100%)',
-    color: 'white',
+    backgroundColor: '#000000',
+    color: '#ffffff',
     border: 'none',
-    padding: '1rem 1.5rem',
-    borderRadius: '12px',
+    padding: '0.875rem',
+    fontSize: '0.9375rem',
+    fontWeight: '500',
+    borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: '600',
-    transition: 'all 0.2s',
-    boxShadow: '0 4px 12px rgba(0, 51, 102, 0.25)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.5rem'
+    transition: 'opacity 0.2s ease',
+    letterSpacing: '-0.01em'
   },
   cancelButton: {
     flex: 1,
-    background: '#f1f5f9',
-    color: '#475569',
-    border: '2px solid #e2e8f0',
-    padding: '1rem 1.5rem',
-    borderRadius: '12px',
-    cursor: 'pointer',
-    fontSize: '1rem',
+    backgroundColor: '#ffffff',
+    color: '#000000',
+    border: '1px solid #e5e5e5',
+    padding: '0.875rem',
+    fontSize: '0.9375rem',
     fontWeight: '500',
-    transition: 'all 0.2s'
-  },
-  loadingSpinner: {
-    fontSize: '1rem'
-  },
-  tips: {
-    backgroundColor: '#f0f9ff',
-    padding: '1rem',
     borderRadius: '8px',
-    border: '1px solid #bae6fd'
-  },
-  tipsTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#0c4a6e',
-    marginBottom: '0.5rem'
-  },
-  tipsList: {
-    margin: 0,
-    paddingLeft: '1.25rem',
-    color: '#0c4a6e',
-    fontSize: '0.875rem'
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    letterSpacing: '-0.01em'
   }
 };

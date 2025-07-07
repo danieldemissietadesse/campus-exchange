@@ -1,144 +1,156 @@
 // src/components/VerificationPage.js
-import { useState, useEffect } from 'react';
-import { sendEmailVerification } from 'firebase/auth';
-import { auth } from '@/app/firebaseConfig';
+"use client";
+
+import { useState } from "react";
+import { auth } from "../app/firebaseConfig"; // Adjust the import path as needed
+import { sendEmailVerification, reload } from "firebase/auth";
 
 export default function VerificationPage({ user }) {
-  const [isResending, setIsResending] = useState(false);
-  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  // Test users that bypass verification - FOR DEVELOPMENT ONLY!
   const testUsers = [
     'testuser@wit.edu',
     'testbuyer@wit.edu', 
     'testseller@wit.edu',
     'testuser1@wit.edu',
     'testuser2@wit.edu',
-    'demissied@wit.edu'  // Your main account
+    'demissied@wit.edu'
   ];
 
-  useEffect(() => {
-    if (user?.email && testUsers.includes(user.email)) {
-      console.log('🧪 Test user detected - bypassing email verification:', user.email);
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    }
-  }, [user]);
-
-  const handleResendEmail = async () => {
-    setIsResending(true);
-    setMessage('');
+  const handleResendVerification = async () => {
+    if (!user) return;
     
+    setLoading(true);
+    setError("");
+    setMessage("");
+
     try {
       await sendEmailVerification(user);
-      setMessage('✅ Verification email sent! Please check your inbox and spam folder.');
-    } catch (error) {
-      setMessage('❌ Failed to send email. Please try again in a few minutes.');
-      console.error('Resend verification error:', error);
+      setMessage("Verification email sent! Please check your inbox and spam folder.");
+    } catch (err) {
+      console.error("Resend verification error:", err);
+      setError("Failed to send verification email. Please try again.");
     } finally {
-      setIsResending(false);
+      setLoading(false);
     }
   };
 
-  const handleRefresh = () => {
-    window.location.reload();
+  const handleCheckVerification = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      await reload(user);
+      if (user.emailVerified) {
+        setMessage("Email verified successfully! Redirecting...");
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setError("Email not yet verified. Please check your email and click the verification link.");
+      }
+    } catch (err) {
+      console.error("Check verification error:", err);
+      setError("Failed to check verification status. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Special handling for test users
-  if (user?.email && testUsers.includes(user.email)) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={styles.iconContainer}>
-            <span style={styles.icon}>🧪</span>
-          </div>
-          <h1 style={styles.title}>Test User Detected</h1>
-          <p style={styles.description}>
-            Bypassing email verification for testing purposes...
-          </p>
-          <p style={styles.testUserInfo}>
-            User: {user.email}
-          </p>
-          <div style={styles.loadingDots}>
-            <span>●</span><span>●</span><span>●</span>
-          </div>
-        </div>
-      </div>
-    );
+  const handleSignOut = () => {
+    auth.signOut();
+  };
+
+  const isTestUser = user?.email && testUsers.includes(user.email);
+
+  if (isTestUser) {
+    return null; // Test users bypass verification
   }
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
-        <div style={styles.iconContainer}>
-          <span style={styles.icon}>📧</span>
+        <div style={styles.header}>
+          <div style={styles.iconContainer}>
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" style={styles.icon}>
+              <path d="M4 4H20C21.1 4 22 4.9 22 6V18C22 19.1 21.1 20 20 20H4C2.9 20 2 19.1 2 18V6C2 4.9 2.9 4 4 4Z" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="22,6 12,13 2,6" stroke="#000000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <h1 style={styles.title}>Verify Your Email</h1>
+          <p style={styles.subtitle}>
+            We've sent a verification link to
+          </p>
+          <p style={styles.email}>{user?.email}</p>
         </div>
-        
-        <h1 style={styles.title}>Verify Your WIT Email</h1>
-        
+
         <div style={styles.content}>
           <p style={styles.description}>
-            We sent a verification link to:
+            Please check your email and click the verification link to activate your account. 
+            You may need to check your spam or junk folder.
           </p>
-          <p style={styles.email}>{user.email}</p>
-          
-          <div style={styles.instructions}>
-            <h3 style={styles.instructionsTitle}>Next Steps:</h3>
-            <ol style={styles.instructionsList}>
-              <li>Check your email inbox for a message from Firebase</li>
-              <li>Click the verification link in the email</li>
-              <li>Return here and click "I've Verified My Email"</li>
-            </ol>
-          </div>
-          
-          <div style={styles.tips}>
-            <p style={styles.tipsTitle}>💡 Can't find the email?</p>
-            <ul style={styles.tipsList}>
-              <li>Check your spam/junk folder</li>
-              <li>Wait a few minutes - it can take time to arrive</li>
-              <li>Make sure you're checking the right email account</li>
-            </ul>
-          </div>
-          
+
           {message && (
-            <div style={styles.message}>
+            <div style={styles.success}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={styles.successIcon}>
+                <path d="M9 12L11 14L15 10" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="12" r="10" stroke="#059669" strokeWidth="2"/>
+              </svg>
               {message}
             </div>
           )}
-        </div>
-        
-        <div style={styles.actions}>
-          <button
-            onClick={handleRefresh}
-            style={styles.primaryButton}
-          >
-            ✅ I've Verified My Email
-          </button>
-          
-          <button
-            onClick={handleResendEmail}
-            disabled={isResending}
-            style={styles.secondaryButton}
-          >
-            {isResending ? '📤 Sending...' : '📨 Resend Email'}
-          </button>
-          
-          <button
-            onClick={() => auth.signOut()}
-            style={styles.tertiaryButton}
-          >
-            Sign Out
-          </button>
-        </div>
-        
-        <div style={styles.footer}>
-          <p style={styles.footerText}>
-            Having trouble? Contact{' '}
-            <a href="mailto:support@wit.edu" style={styles.footerLink}>
-              support@wit.edu
-            </a>
-          </p>
+
+          {error && (
+            <div style={styles.error}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={styles.errorIcon}>
+                <circle cx="12" cy="12" r="10" stroke="#dc2626" strokeWidth="2"/>
+                <line x1="15" y1="9" x2="9" y2="15" stroke="#dc2626" strokeWidth="2"/>
+                <line x1="9" y1="9" x2="15" y2="15" stroke="#dc2626" strokeWidth="2"/>
+              </svg>
+              {error}
+            </div>
+          )}
+
+          <div style={styles.actions}>
+            <button
+              onClick={handleCheckVerification}
+              style={styles.primaryButton}
+              disabled={loading}
+            >
+              {loading ? (
+                <div style={styles.loadingSpinner}>
+                  <div style={styles.spinner}></div>
+                  Checking...
+                </div>
+              ) : (
+                "I've Verified My Email"
+              )}
+            </button>
+
+            <button
+              onClick={handleResendVerification}
+              style={styles.secondaryButton}
+              disabled={loading}
+            >
+              Resend Verification Email
+            </button>
+          </div>
+
+          <div style={styles.footer}>
+            <p style={styles.footerText}>
+              Wrong email address?
+            </p>
+            <button
+              onClick={handleSignOut}
+              style={styles.signOutButton}
+              disabled={loading}
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -148,161 +160,161 @@ export default function VerificationPage({ user }) {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#ffffff',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '2rem',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
+    padding: '2rem'
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: '16px',
-    padding: '3rem',
-    textAlign: 'center',
-    maxWidth: '500px',
     width: '100%',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #e2e8f0'
+    maxWidth: '480px',
+    padding: '3rem 2rem'
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: '3rem'
   },
   iconContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
     marginBottom: '1.5rem'
   },
   icon: {
-    fontSize: '4rem',
-    display: 'block'
+    opacity: 0.8
   },
   title: {
-    fontSize: '1.875rem',
-    fontWeight: '700',
-    marginBottom: '1.5rem',
-    color: '#1a202c'
+    fontSize: '1.75rem',
+    fontWeight: '600',
+    letterSpacing: '-0.02em',
+    color: '#000000',
+    margin: '0 0 1rem 0'
   },
-  content: {
-    textAlign: 'left',
-    marginBottom: '2rem'
-  },
-  description: {
-    fontSize: '1rem',
-    color: '#64748b',
-    marginBottom: '0.5rem',
-    textAlign: 'center'
+  subtitle: {
+    fontSize: '0.9375rem',
+    color: '#666666',
+    margin: '0 0 0.5rem 0',
+    fontWeight: '400'
   },
   email: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#003366',
-    marginBottom: '2rem',
+    fontSize: '1rem',
+    color: '#000000',
+    fontWeight: '500',
+    margin: 0,
+    letterSpacing: '-0.01em'
+  },
+  content: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem'
+  },
+  description: {
+    fontSize: '0.9375rem',
+    color: '#666666',
+    lineHeight: '1.5',
     textAlign: 'center',
-    padding: '1rem',
-    backgroundColor: '#f0f9ff',
-    borderRadius: '8px',
-    border: '1px solid #bfdbfe'
+    margin: 0,
+    fontWeight: '400'
   },
-  testUserInfo: {
-    fontSize: '1rem',
+  success: {
+    backgroundColor: '#f0fdf4',
     color: '#059669',
-    marginBottom: '1rem',
-    fontWeight: '500'
-  },
-  instructions: {
-    marginBottom: '1.5rem'
-  },
-  instructionsTitle: {
-    fontSize: '1rem',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '0.75rem'
-  },
-  instructionsList: {
-    paddingLeft: '1.25rem',
-    color: '#64748b'
-  },
-  tips: {
-    backgroundColor: '#fffbeb',
-    padding: '1rem',
+    padding: '0.875rem 1rem',
     borderRadius: '8px',
-    border: '1px solid #fed7aa',
-    marginBottom: '1rem'
-  },
-  tipsTitle: {
     fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#92400e',
-    marginBottom: '0.5rem'
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    border: '1px solid #bbf7d0',
+    fontWeight: '400'
   },
-  tipsList: {
-    paddingLeft: '1.25rem',
-    color: '#92400e',
-    fontSize: '0.875rem',
-    margin: 0
+  successIcon: {
+    flexShrink: 0
   },
-  message: {
-    padding: '1rem',
+  error: {
+    backgroundColor: '#fef2f2',
+    color: '#dc2626',
+    padding: '0.875rem 1rem',
     borderRadius: '8px',
-    backgroundColor: '#f0f9ff',
-    border: '1px solid #bae6fd',
-    color: '#0c4a6e',
     fontSize: '0.875rem',
-    fontWeight: '500'
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    border: '1px solid #fecaca',
+    fontWeight: '400'
+  },
+  errorIcon: {
+    flexShrink: 0
   },
   actions: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
-    marginBottom: '1.5rem'
+    gap: '1rem',
+    marginTop: '1rem'
   },
   primaryButton: {
-    backgroundColor: '#10b981',
-    color: 'white',
+    backgroundColor: '#000000',
+    color: '#ffffff',
     border: 'none',
-    padding: '0.875rem 1.5rem',
+    padding: '0.875rem 1rem',
+    fontSize: '0.9375rem',
+    fontWeight: '500',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: '600',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s ease',
+    letterSpacing: '-0.01em',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '48px'
   },
   secondaryButton: {
-    backgroundColor: '#003366',
-    color: 'white',
-    border: 'none',
-    padding: '0.875rem 1.5rem',
+    backgroundColor: '#ffffff',
+    color: '#000000',
+    border: '1px solid #e5e5e5',
+    padding: '0.875rem 1rem',
+    fontSize: '0.9375rem',
+    fontWeight: '500',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '1rem',
-    fontWeight: '500',
-    transition: 'all 0.2s'
+    transition: 'all 0.2s ease',
+    letterSpacing: '-0.01em'
   },
-  tertiaryButton: {
-    backgroundColor: 'transparent',
-    color: '#64748b',
-    border: '2px solid #e2e8f0',
-    padding: '0.75rem 1.5rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s'
+  loadingSpinner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem'
+  },
+  spinner: {
+    width: '16px',
+    height: '16px',
+    border: '2px solid transparent',
+    borderTop: '2px solid #ffffff',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite'
   },
   footer: {
-    paddingTop: '1rem',
-    borderTop: '1px solid #e2e8f0'
+    textAlign: 'center',
+    marginTop: '2rem',
+    paddingTop: '1.5rem',
+    borderTop: '1px solid #f0f0f0'
   },
   footerText: {
     fontSize: '0.875rem',
-    color: '#64748b',
-    margin: 0
+    color: '#666666',
+    margin: '0 0 0.75rem 0',
+    fontWeight: '400'
   },
-  footerLink: {
-    color: '#003366',
-    textDecoration: 'none',
-    fontWeight: '500'
-  },
-  loadingDots: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '0.5rem',
-    marginTop: '1rem'
+  signOutButton: {
+    background: 'none',
+    border: 'none',
+    color: '#666666',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    transition: 'color 0.2s ease'
   }
 };

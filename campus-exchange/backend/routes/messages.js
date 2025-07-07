@@ -72,7 +72,7 @@ router.patch('/:id/read', async (req, res) => {
   }
 });
 
-/* ────────── GET /api/messages/stream (SSE) - FIXED VERSION ────────── */
+/* ────────── GET /api/messages/stream (SSE) - NO INDEX VERSION ────────── */
 router.get('/stream', (req, res) => {
   const uid = req.userUid;
   console.log(`🔗 SSE connection request for user: ${uid}`);
@@ -90,14 +90,46 @@ router.get('/stream', (req, res) => {
   res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now(), userId: uid })}\n\n`);
   console.log(`💓 Sent heartbeat to user ${uid}`);
 
-  // Create Firestore listener with proper error handling
-  const unsub = db.collection('messages')
-                  .where('recipientId', '==', uid)  // Only messages FOR this user
-                  .orderBy('createdAt', 'desc')
-                  .onSnapshot(snap => {
+  // Create listeners for BOTH sent and received messages (WITHOUT orderBy to avoid index requirement)
+  const sentListener = db.collection('messages')
+    .where('senderId', '==', uid)
+    .onSnapshot(snap => {
+      console.log(`📤 Sent messages update for user ${uid}: ${snap.size} messages`);
+      sendMessagesUpdate(uid, res);
+    }, (error) => {
+      console.error('❌ Sent messages listener error for user', uid, ':', error);
+    });
+
+  const receivedListener = db.collection('messages')
+    .where('recipientId', '==', uid)
+    .onSnapshot(snap => {
+      console.log(`📥 Received messages update for user ${uid}: ${snap.size} messages`);
+      sendMessagesUpdate(uid, res);
+    }, (error) => {
+      console.error('❌ Received messages listener error for user', uid, ':', error);
+    });
+
+  // Function to fetch and send all messages for the user
+  async function sendMessagesUpdate(userId, response) {
     try {
+      const [sentSnap, recvSnap] = await Promise.all([
+        db.collection('messages').where('senderId', '==', userId).get(),
+        db.collection('messages').where('recipientId', '==', userId).get()
+      ]);
+
       const msgs = [];
-      snap.forEach(d => {
+      sentSnap.forEach(d => {
+        const data = d.data();
+        msgs.push({ 
+          id: d.id, 
+          type: 'sent',
+          ...data,
+          // Convert Firestore timestamp to seconds for frontend
+          createdAt: data.createdAt ? { seconds: data.createdAt.seconds } : null
+        });
+      });
+      
+      recvSnap.forEach(d => {
         const data = d.data();
         msgs.push({ 
           id: d.id, 
@@ -107,45 +139,47 @@ router.get('/stream', (req, res) => {
           createdAt: data.createdAt ? { seconds: data.createdAt.seconds } : null
         });
       });
+
+      // Sort by timestamp in memory (newest first)
+      msgs.sort((a, b) => {
+        const aTime = a.createdAt?.seconds || 0;
+        const bTime = b.createdAt?.seconds || 0;
+        return bTime - aTime;
+      });
       
-      console.log(`📤 Sending ${msgs.length} messages to user ${uid}`);
+      console.log(`📤 Sending ${msgs.length} total messages to user ${userId}`);
       
       // Send as structured message
       const message = JSON.stringify({ 
         type: 'messages', 
         data: msgs,
         timestamp: Date.now(),
-        userId: uid
+        userId: userId
       });
       
-      res.write(`data: ${message}\n\n`);
+      response.write(`data: ${message}\n\n`);
       
     } catch (error) {
       console.error('❌ SSE message processing error:', error);
-      res.write(`data: ${JSON.stringify({ 
+      response.write(`data: ${JSON.stringify({ 
         type: 'error', 
         message: 'Processing error',
         timestamp: Date.now() 
       })}\n\n`);
     }
-  }, (error) => {
-    console.error('❌ Firestore listener error for user', uid, ':', error);
-    res.write(`data: ${JSON.stringify({ 
-      type: 'error', 
-      message: 'Database connection error',
-      timestamp: Date.now() 
-    })}\n\n`);
-  });
+  }
 
   // Handle client disconnect
   req.on('close', () => {
     console.log(`🔌 SSE connection closed for user ${uid}`);
-    unsub();
+    sentListener();
+    receivedListener();
   });
 
   req.on('error', (error) => {
     console.error(`❌ SSE request error for user ${uid}:`, error);
-    unsub();
+    sentListener();
+    receivedListener();
   });
 
   // Periodic heartbeat to keep connection alive
@@ -185,13 +219,11 @@ router.get('/conversations/:listingId', async (req, res) => {
         .where('listingId', '==', listingId)
         .where('senderId', '==', currentUserId)
         .where('recipientId', '==', otherUserId)
-        .orderBy('createdAt', 'asc')
         .get(),
       db.collection('messages')
         .where('listingId', '==', listingId)
         .where('senderId', '==', otherUserId)
         .where('recipientId', '==', currentUserId)
-        .orderBy('createdAt', 'asc')
         .get()
     ]);
 
@@ -205,7 +237,7 @@ router.get('/conversations/:listingId', async (req, res) => {
       messages.push({ id: doc.id, type: 'received', ...doc.data() });
     });
 
-    // Sort by timestamp
+    // Sort by timestamp in memory
     messages.sort((a, b) => {
       const aTime = a.createdAt?.seconds || 0;
       const bTime = b.createdAt?.seconds || 0;
@@ -220,3 +252,4 @@ router.get('/conversations/:listingId', async (req, res) => {
 });
 
 module.exports = router;
+

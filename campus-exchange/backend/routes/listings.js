@@ -68,9 +68,11 @@ router.post('/', upload.array('images', 6), async (req, res) => {
       price   : Number(price),
       category,
       userId  : req.userUid,
+      userEmail: req.decodedToken?.email || 'dev@localhost', // Add this line
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       imageUrls: []
     };
+
 
     if (req.files?.length) {
       const urls = await Promise.all(
