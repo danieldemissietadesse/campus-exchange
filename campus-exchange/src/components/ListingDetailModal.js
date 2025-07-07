@@ -330,7 +330,7 @@ const styles = {
   },
   content: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: '1fr',
     gap: '2rem',
     padding: '2rem',
     '@media (max-width: 768px)': {
@@ -642,4 +642,3 @@ const styles = {
     flexShrink: 0
   }
 };
-
