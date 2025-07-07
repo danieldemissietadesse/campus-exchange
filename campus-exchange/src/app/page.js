@@ -1,12 +1,11 @@
-// src/app/page.js
 "use client";
 
 import { useState, useEffect } from "react";
 import { auth } from "./firebaseConfig";
 import { onAuthStateChanged, reload } from "firebase/auth";
-import { streamListings, streamMessages } from "@/lib/api";
+import { streamListings, getMessages, streamMessages } from "@/lib/api";
 
-// Import components (these will also need updating)
+// Import components
 import Auth from "@/components/Auth";
 import VerificationPage from "@/components/VerificationPage";
 import MessagesList from "@/components/MessagesList";
@@ -16,9 +15,10 @@ import ListingDetailModal from "@/components/ListingDetailModal";
 import MessageModal from "@/components/MessageModal";
 
 export default function HomePage() {
-  // [State management remains the same]
+  // State management
   const [user, setUser] = useState(null);
   const [authed, setAuthed] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [listings, setListings] = useState([]);
   const [messages, setMessages] = useState([]);
   const [filteredListings, setFilteredListings] = useState([]);
@@ -32,74 +32,71 @@ export default function HomePage() {
 
   const categories = ["All", "Textbooks", "Electronics", "Furniture", "Clothing", "Dorm Supplies", "Other"];
 
-  // [All useEffects remain the same]
+  // --- useEffect for Authentication ---
   useEffect(() => {
-    const off = onAuthStateChanged(auth, async (u) => {
-      if (!u) return setUser(null);
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setLoading(true);
+      if (!u) {
+        setUser(null);
+        setAuthed(false);
+        setLoading(false);
+        return;
+      }
+      
       await reload(u);
       setUser(u);
       
       const testUsers = [
-        'testuser@wit.edu',
-        'testbuyer@wit.edu', 
-        'testseller@wit.edu',
-        'testuser1@wit.edu',
-        'testuser2@wit.edu',
-        'demissied@wit.edu'
+        'testuser@wit.edu', 'testbuyer@wit.edu', 'testseller@wit.edu',
+        'testuser1@wit.edu', 'testuser2@wit.edu', 'demissied@wit.edu'
       ];
       
-      if (testUsers.includes(u.email)) {
-        console.log('🧪 Test user detected - bypassing email verification:', u.email);
-        setAuthed(true);
-      } else {
-        setAuthed(u.emailVerified);
-      }
+      const isVerified = u.emailVerified || testUsers.includes(u.email);
+      setAuthed(isVerified);
+      setLoading(false);
     });
-    return () => off();
+    return () => unsub();
   }, []);
 
+  // --- useEffect for Data Fetching and Real-time Streams ---
   useEffect(() => {
     if (!authed) return;
-    const unsub = streamListings(setListings);
-    return () => unsub();
+
+    // Stream listings
+    const unsubListings = streamListings(setListings);
+    
+    // Fetch initial messages
+    getMessages()
+      .then(initialMessages => setMessages(initialMessages))
+      .catch(err => console.error("Failed to fetch initial messages:", err));
+      
+    // Listen for new incoming messages
+    const handleNewMessage = (newMessage) => {
+      setMessages(prevMessages => {
+        // Avoid adding duplicates
+        if (prevMessages.some(msg => msg.id === newMessage.id)) {
+          return prevMessages;
+        }
+        // Add new message and re-sort
+        return [...prevMessages, newMessage].sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      });
+    };
+    
+    const unsubMessages = streamMessages(handleNewMessage);
+    
+    // Cleanup function
+    return () => {
+      unsubListings();
+      unsubMessages();
+    };
   }, [authed]);
 
-  useEffect(() => {
-    if (!authed || !user?.uid) {
-      console.log('⏭️ Skipping message stream setup - user not ready:', { authed, uid: user?.uid });
-      return;
-    }
-    
-    console.log('🚀 Setting up message stream for user:', user.uid);
-    
-    const handleMessageUpdate = (newMessages) => {
-      console.log('📨 Message update received:', newMessages.length, 'messages');
-      setMessages(newMessages);
-    };
-    
-    const unsub = streamMessages(user.uid, handleMessageUpdate);
-    
-    return () => {
-      console.log('🧹 Cleaning up message stream for user:', user.uid);
-      if (unsub) {
-        unsub();
-      }
-    };
-  }, [authed, user?.uid]);
-
-  useEffect(() => {
-    console.log(`📊 Messages state updated: ${messages.length} total messages`);
-    const unreadCount = messages.filter(m => !m.read && m.recipientId === user?.uid).length;
-    console.log(`📬 Unread messages: ${unreadCount}`);
-  }, [messages, user?.uid]);
-
+  // --- useEffect for Filtering Listings ---
   useEffect(() => {
     let filtered = listings;
-    
     if (selectedCategory !== "All") {
       filtered = filtered.filter(listing => listing.category === selectedCategory);
     }
-    
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(listing => 
@@ -107,15 +104,13 @@ export default function HomePage() {
         listing.description.toLowerCase().includes(query)
       );
     }
-    
     setFilteredListings(filtered);
   }, [listings, selectedCategory, searchQuery]);
 
-  // Computed values
+  // --- Computed values & Handlers ---
   const unreadCount = messages.filter((m) => !m.read && m.recipientId === user?.uid).length;
   const userListings = listings.filter(listing => listing.userId === user?.uid);
 
-  // Handlers
   const handleViewChange = (view) => {
     setShowProfile(view === 'profile');
     setShowMessages(view === 'messages');
@@ -124,10 +119,9 @@ export default function HomePage() {
       setShowMessages(false);
     }
   };
-
+  
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Just now';
-    
     let date;
     if (timestamp.seconds) {
       date = new Date(timestamp.seconds * 1000);
@@ -151,10 +145,16 @@ export default function HomePage() {
     return date.toLocaleDateString();
   };
 
-  // Render gates
+  // --- Render Gates ---
+  if (loading) return (
+    <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh'}}>
+        <div>Loading...</div>
+    </div>
+  );
   if (!user) return <Auth onAuth={() => {}} />;
   if (!authed) return <VerificationPage user={user} />;
 
+  // --- Main Render ---
   return (
     <div style={styles.container}>
       {/* Header */}
