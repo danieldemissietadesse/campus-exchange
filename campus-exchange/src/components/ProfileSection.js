@@ -653,7 +653,7 @@ export default function ProfileSection({ user, userListings, onListingSelect }) 
                   />
                   <span style={{
                     ...styles.toggleSlider,
-                    backgroundColor: emailNotifications ? '#000000' : '#ccc'
+                    backgroundColor: emailNotifications ? 'var(--accent-bg)' : '#ccc'
                   }}></span>
                 </label>
               </div>
@@ -672,7 +672,7 @@ export default function ProfileSection({ user, userListings, onListingSelect }) 
                   />
                   <span style={{
                     ...styles.toggleSlider,
-                    backgroundColor: profileVisibility ? '#000000' : '#ccc'
+                    backgroundColor: profileVisibility ? 'var(--accent-bg)' : '#ccc'
                   }}></span>
                 </label>
               </div>
@@ -691,7 +691,7 @@ export default function ProfileSection({ user, userListings, onListingSelect }) 
                   />
                   <span style={{
                     ...styles.toggleSlider,
-                    backgroundColor: darkMode ? '#000000' : '#ccc'
+                    backgroundColor: darkMode ? 'var(--accent-bg)' : '#ccc'
                   }}></span>
                 </label>
               </div>
@@ -715,7 +715,7 @@ const styles = {
     alignItems: 'flex-start',
     marginBottom: '3rem',
     paddingBottom: '2rem',
-    borderBottom: '1px solid #f0f0f0'
+    borderBottom: '1px solid var(--border)'
   },
   profileInfo: {
     display: 'flex',
@@ -732,7 +732,7 @@ const styles = {
     width: '100px',
     height: '100px',
     borderRadius: '50%',
-    backgroundColor: '#000000',
+    backgroundColor: 'var(--accent-bg)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -746,7 +746,7 @@ const styles = {
     objectFit: 'cover'
   },
   avatarText: {
-    color: '#ffffff',
+    color: var(--accent-fg),
     fontSize: '2rem',
     fontWeight: '600',
     letterSpacing: '-0.02em'
@@ -766,7 +766,7 @@ const styles = {
     width: '24px',
     height: '24px',
     border: '2px solid transparent',
-    borderTop: '2px solid #ffffff',
+    borderTop: '2px solid var(--accent-fg)',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite'
   },
@@ -781,8 +781,8 @@ const styles = {
     alignItems: 'center',
     gap: '0.5rem',
     background: 'none',
-    border: '1px solid #e5e5e5',
-    color: '#666666',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
     fontSize: '0.75rem',
     fontWeight: '500',
     padding: '0.5rem 0.75rem',
@@ -821,11 +821,11 @@ const styles = {
     fontWeight: '600',
     letterSpacing: '-0.02em',
     margin: '0 0 0.25rem 0',
-    color: '#000000'
+    color: 'var(--foreground)'
   },
   email: {
     fontSize: '0.9375rem',
-    color: '#666666',
+    color: 'var(--text-secondary)',
     margin: '0 0 1rem 0',
     fontWeight: '400'
   },
@@ -843,19 +843,19 @@ const styles = {
   statNumber: {
     fontSize: '1.25rem',
     fontWeight: '600',
-    color: '#000000',
+    color: 'var(--foreground)',
     letterSpacing: '-0.02em'
   },
   statLabel: {
-    color: '#666666',
+    color: 'var(--text-secondary)',
     fontWeight: '400'
   },
   statValue: {
-    color: '#000000',
+    color: 'var(--foreground)',
     fontWeight: '500'
   },
   statDivider: {
-    color: '#cccccc',
+    color: 'var(--text-secondary)',
     fontSize: '0.75rem'
   },
   signOutButton: {
@@ -863,8 +863,8 @@ const styles = {
     alignItems: 'center',
     gap: '0.5rem',
     background: 'none',
-    border: '1px solid #e5e5e5',
-    color: '#666666',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
     fontSize: '0.875rem',
     fontWeight: '500',
     padding: '0.5rem 1rem',
@@ -877,7 +877,7 @@ const styles = {
   },
   tabs: {
     display: 'flex',
-    borderBottom: '1px solid #f0f0f0',
+    borderBottom: '1px solid var(--border)',
     marginBottom: '2rem'
   },
   tab: {
@@ -887,14 +887,14 @@ const styles = {
     marginRight: '2rem',
     fontSize: '0.9375rem',
     fontWeight: '500',
-    color: '#666666',
+    color: 'var(--text-secondary)',
     cursor: 'pointer',
     position: 'relative',
     transition: 'color 0.2s ease',
     letterSpacing: '-0.01em'
   },
   tabActive: {
-    color: '#000000'
+    color: 'var(--foreground)'
   },
   content: {
     minHeight: '400px'
@@ -908,8 +908,8 @@ const styles = {
     gap: '1.5rem'
   },
   listingCard: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #f0f0f0',
+    backgroundColor: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: '12px',
     overflow: 'hidden',
     transition: 'transform 0.2s ease, box-shadow 0.2s ease',
@@ -920,11 +920,11 @@ const styles = {
   listingImage: {
     width: '100%',
     height: '180px',
-    backgroundColor: '#fafafa',
+    backgroundColor: 'var(--surface)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottom: '1px solid #f0f0f0'
+    borderBottom: '1px solid var(--border)'
   },
   listingImageImg: {
     width: '100%',
@@ -936,7 +936,7 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: '0.5rem',
-    color: '#cccccc'
+    color: 'var(--text-secondary)'
   },
   listingContent: {
     padding: '1rem'
@@ -945,7 +945,7 @@ const styles = {
     fontSize: '0.9375rem',
     fontWeight: '500',
     marginBottom: '0.5rem',
-    color: '#000000',
+    color: 'var(--foreground)',
     letterSpacing: '-0.01em',
     lineHeight: '1.4',
     display: '-webkit-box',
@@ -956,7 +956,7 @@ const styles = {
   listingPrice: {
     fontSize: '1.125rem',
     fontWeight: '600',
-    color: '#000000',
+    color: 'var(--foreground)',
     marginBottom: '0.75rem',
     letterSpacing: '-0.02em'
   },
@@ -964,16 +964,16 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     paddingTop: '0.75rem',
-    borderTop: '1px solid #f5f5f5'
+    borderTop: '1px solid var(--border)'
   },
   listingCategory: {
     fontSize: '0.75rem',
-    color: '#999999',
+    color: 'var(--text-secondary)',
     fontWeight: '400'
   },
   listingDate: {
     fontSize: '0.75rem',
-    color: '#999999',
+    color: 'var(--text-secondary)',
     fontWeight: '400'
   },
   activitySection: {
@@ -983,8 +983,8 @@ const styles = {
     width: '100%'
   },
   settingsCard: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #f0f0f0',
+    backgroundColor: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: '12px',
     padding: '1.5rem'
   },
@@ -992,7 +992,7 @@ const styles = {
     fontSize: '1.125rem',
     fontWeight: '600',
     margin: '0 0 1.5rem 0',
-    color: '#000000',
+    color: 'var(--foreground)',
     letterSpacing: '-0.01em'
   },
   settingItem: {
@@ -1000,7 +1000,7 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '1rem 0',
-    borderBottom: '1px solid #f5f5f5'
+    borderBottom: '1px solid var(--border)'
   },
   settingInfo: {
     display: 'flex',
@@ -1010,12 +1010,12 @@ const styles = {
   settingLabel: {
     fontSize: '0.9375rem',
     fontWeight: '500',
-    color: '#000000',
+    color: 'var(--foreground)',
     letterSpacing: '-0.01em'
   },
   settingDescription: {
     fontSize: '0.8125rem',
-    color: '#666666',
+    color: 'var(--text-secondary)',
     fontWeight: '400'
   },
   toggle: {
@@ -1043,7 +1043,7 @@ const styles = {
   emptyState: {
     textAlign: 'center',
     padding: '4rem 2rem',
-    color: '#999999'
+    color: 'var(--text-secondary)'
   },
   emptyIcon: {
     marginBottom: '1rem'
@@ -1052,11 +1052,11 @@ const styles = {
     fontSize: '1.125rem',
     fontWeight: '500',
     margin: '0 0 0.5rem 0',
-    color: '#666666'
+    color: 'var(--text-secondary)'
   },
   emptyText: {
     fontSize: '0.9375rem',
-    color: '#999999',
+    color: 'var(--text-secondary)',
     margin: 0,
     lineHeight: '1.5'
   },
@@ -1084,8 +1084,8 @@ const styles = {
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
   },
   activityCard: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #f0f0f0',
+    backgroundColor: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: '12px',
     padding: '1.5rem',
     marginBottom: '1.5rem'
@@ -1094,7 +1094,7 @@ const styles = {
     fontSize: '1.125rem',
     fontWeight: '600',
     margin: '0 0 1rem 0',
-    color: '#000000',
+    color: 'var(--foreground)',
     letterSpacing: '-0.01em'
   },
   statsGrid: {
@@ -1105,7 +1105,7 @@ const styles = {
   statItem: {
     textAlign: 'center',
     padding: '1rem',
-    backgroundColor: '#fafafa',
+    backgroundColor: 'var(--surface)',
     borderRadius: '8px',
     display: 'flex',
     flexDirection: 'column',
@@ -1114,12 +1114,12 @@ const styles = {
   statNumber: {
     fontSize: '1.5rem',
     fontWeight: '700',
-    color: '#000000',
+    color: 'var(--foreground)',
     letterSpacing: '-0.02em'
   },
   statLabel: {
     fontSize: '0.875rem',
-    color: '#666666',
+    color: 'var(--text-secondary)',
     fontWeight: '500'
   },
   activityList: {
@@ -1132,7 +1132,7 @@ const styles = {
     alignItems: 'center',
     gap: '1rem',
     padding: '0.75rem',
-    backgroundColor: '#fafafa',
+    backgroundColor: 'var(--surface)',
     borderRadius: '8px'
   },
   activityIcon: {
@@ -1151,19 +1151,19 @@ const styles = {
   },
   activityText: {
     fontSize: '0.9375rem',
-    color: '#000000',
+    color: 'var(--foreground)',
     margin: 0,
     fontWeight: '400'
   },
   activityTime: {
     fontSize: '0.8125rem',
-    color: '#666666',
+    color: 'var(--text-secondary)',
     fontWeight: '400'
   },
   emptyActivity: {
     textAlign: 'center',
     padding: '2rem',
-    color: '#999999'
+    color: 'var(--text-secondary)'
   }
 };
 

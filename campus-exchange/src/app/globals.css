@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #ffffff;
+  --text-secondary: #666666;
+  --border: #f0f0f0;
+  --accent-bg: #000000;
+  --accent-fg: #ffffff;
 }
 
 @theme inline {
@@ -16,6 +21,11 @@
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+  --surface: #1a1a1a;
+  --text-secondary: #b3b3b3;
+  --border: #333333;
+  --accent-bg: #333333;
+  --accent-fg: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
