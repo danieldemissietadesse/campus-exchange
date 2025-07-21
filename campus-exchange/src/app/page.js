@@ -431,13 +431,13 @@ export default function HomePage() {
 const styles = {
   container: {
     minHeight: '100vh',
-    backgroundColor: 'var(--background)',
+    backgroundColor: '#ffffff',
     fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
-    color: 'var(--foreground)'
+    color: '#000000'
   },
   header: {
-    backgroundColor: 'var(--surface)',
-    borderBottom: '1px solid var(--border)',
+    backgroundColor: '#ffffff',
+    borderBottom: '1px solid #f0f0f0',
     position: 'sticky',
     top: 0,
     zIndex: 100,
@@ -460,7 +460,7 @@ const styles = {
     fontSize: '1.125rem',
     fontWeight: '600',
     letterSpacing: '-0.02em',
-    color: 'var(--foreground)'
+    color: '#000000'
   },
   nav: {
     display: 'flex',
@@ -470,7 +470,7 @@ const styles = {
   navButton: {
     background: 'none',
     border: 'none',
-    color: 'var(--text-secondary)',
+    color: '#666666',
     fontSize: '0.9375rem',
     fontWeight: '500',
     cursor: 'pointer',
@@ -480,14 +480,14 @@ const styles = {
     letterSpacing: '-0.01em'
   },
   navButtonActive: {
-    color: 'var(--foreground)'
+    color: '#000000'
   },
   badge: {
     position: 'absolute',
     top: '-4px',
     right: '-16px',
-    backgroundColor: 'var(--accent-bg)',
-    color: 'var(--accent-fg)',
+    backgroundColor: '#000000',
+    color: '#ffffff',
     borderRadius: '10px',
     padding: '2px 6px',
     fontSize: '0.6875rem',
@@ -497,13 +497,13 @@ const styles = {
   },
   userEmail: {
     fontSize: '0.875rem',
-    color: 'var(--text-secondary)',
+    color: '#666666',
     fontWeight: '400'
   },
   signOutButton: {
     background: 'none',
-    border: '1px solid var(--border)',
-    color: 'var(--text-secondary)',
+    border: '1px solid #e5e5e5',
+    color: '#666666',
     fontSize: '0.875rem',
     fontWeight: '500',
     padding: '0.5rem 1rem',
@@ -519,18 +519,18 @@ const styles = {
   hero: {
     textAlign: 'center',
     padding: '4rem 0',
-    borderBottom: '1px solid var(--border)'
+    borderBottom: '1px solid #f0f0f0'
   },
   heroTitle: {
     fontSize: '3rem',
     fontWeight: '700',
     letterSpacing: '-0.03em',
     margin: '0 0 0.5rem 0',
-    color: 'var(--foreground)'
+    color: '#000000'
   },
   heroSubtitle: {
     fontSize: '1.25rem',
-    color: 'var(--text-secondary)',
+    color: '#666666',
     margin: '0 0 3rem 0',
     fontWeight: '400'
   },
@@ -543,13 +543,12 @@ const styles = {
     width: '100%',
     padding: '1rem 1rem 1rem 3rem',
     fontSize: '1rem',
-    border: '1px solid var(--border)',
+    border: '1px solid #e5e5e5',
     borderRadius: '10px',
-    backgroundColor: 'var(--surface)',
+    backgroundColor: '#f8f8f8',
     outline: 'none',
     transition: 'all 0.2s ease',
-    fontWeight: '400',
-    color: 'var(--foreground)'
+    fontWeight: '400'
   },
   searchIcon: {
     position: 'absolute',
@@ -559,8 +558,8 @@ const styles = {
     pointerEvents: 'none'
   },
   postButton: {
-    backgroundColor: 'var(--accent-bg)',
-    color: 'var(--accent-fg)',
+    backgroundColor: '#000000',
+    color: '#ffffff',
     border: 'none',
     padding: '0.875rem 2rem',
     fontSize: '0.9375rem',
@@ -572,7 +571,7 @@ const styles = {
   },
   categoriesSection: {
     padding: '2rem 0',
-    borderBottom: '1px solid var(--border)'
+    borderBottom: '1px solid #f0f0f0'
   },
   categories: {
     display: 'flex',
@@ -582,8 +581,8 @@ const styles = {
   },
   categoryPill: {
     background: 'none',
-    border: '1px solid var(--border)',
-    color: 'var(--text-secondary)',
+    border: '1px solid #e5e5e5',
+    color: '#666666',
     padding: '0.5rem 1.25rem',
     borderRadius: '20px',
     fontSize: '0.875rem',
@@ -593,9 +592,9 @@ const styles = {
     letterSpacing: '-0.01em'
   },
   categoryPillActive: {
-    backgroundColor: 'var(--accent-bg)',
-    color: 'var(--accent-fg)',
-    borderColor: 'var(--accent-bg)'
+    backgroundColor: '#000000',
+    color: '#ffffff',
+    borderColor: '#000000'
   },
   listingsSection: {
     padding: '3rem 0 4rem'
@@ -611,11 +610,11 @@ const styles = {
     fontWeight: '600',
     letterSpacing: '-0.02em',
     margin: 0,
-    color: 'var(--foreground)'
+    color: '#000000'
   },
   listingsCount: {
     fontSize: '0.9375rem',
-    color: 'var(--text-secondary)',
+    color: '#999999',
     fontWeight: '400'
   },
   grid: {
@@ -624,8 +623,8 @@ const styles = {
     gap: '1.5rem'
   },
   card: {
-    backgroundColor: 'var(--surface)',
-    border: '1px solid var(--border)',
+    backgroundColor: '#ffffff',
+    border: '1px solid #f0f0f0',
     borderRadius: '12px',
     overflow: 'hidden',
     cursor: 'pointer',
@@ -634,11 +633,11 @@ const styles = {
   cardImage: {
     width: '100%',
     height: '240px',
-    backgroundColor: 'var(--surface)',
+    backgroundColor: '#fafafa',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottom: '1px solid var(--border)'
+    borderBottom: '1px solid #f0f0f0'
   },
   cardImageImg: {
     width: '100%',
@@ -650,7 +649,7 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: '0.5rem',
-    color: 'var(--text-secondary)'
+    color: '#cccccc'
   },
   cardContent: {
     padding: '1.25rem'
@@ -659,7 +658,7 @@ const styles = {
     fontSize: '1rem',
     fontWeight: '500',
     marginBottom: '0.5rem',
-    color: 'var(--foreground)',
+    color: '#000000',
     letterSpacing: '-0.01em',
     lineHeight: '1.4',
     display: '-webkit-box',
@@ -670,7 +669,7 @@ const styles = {
   cardPrice: {
     fontSize: '1.375rem',
     fontWeight: '600',
-    color: 'var(--foreground)',
+    color: '#000000',
     marginBottom: '0.75rem',
     letterSpacing: '-0.02em'
   },
@@ -678,27 +677,27 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     paddingTop: '0.75rem',
-    borderTop: '1px solid var(--border)'
+    borderTop: '1px solid #f5f5f5'
   },
   cardMeta: {
     fontSize: '0.8125rem',
-    color: 'var(--text-secondary)',
+    color: '#999999',
     fontWeight: '400'
   },
   emptyState: {
     textAlign: 'center',
     padding: '4rem 2rem',
-    color: 'var(--text-secondary)'
+    color: '#999999'
   },
   emptyTitle: {
     fontSize: '1.25rem',
     fontWeight: '500',
     margin: '1rem 0 0.5rem',
-    color: 'var(--text-secondary)'
+    color: '#666666'
   },
   emptyText: {
     fontSize: '0.9375rem',
-    color: 'var(--text-secondary)',
+    color: '#999999',
     margin: 0
   }
 };
