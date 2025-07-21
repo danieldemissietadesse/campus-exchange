@@ -20,6 +20,7 @@ export default function MessageModal({ listing, currentUser, onClose }) {
         recipientEmail: listing.userEmail,
         listingId: listing.id,
         listingTitle: listing.title,
+        listingImageUrl: listing.imageUrls && listing.imageUrls.length > 0 ? listing.imageUrls[0] : null,
         message: messageText.trim()
       };
       

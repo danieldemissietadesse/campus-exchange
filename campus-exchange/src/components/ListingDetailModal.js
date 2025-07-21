@@ -1,11 +1,78 @@
 // src/components/ListingDetailModal.js
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { saveListing, unsaveListing, deleteListing, getSavedListings } from '@/lib/api';
 
 export default function ListingDetailModal({ listing, currentUser, onClose, onMessageClick }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [imageLoading, setImageLoading] = useState(true);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Check if listing is saved on mount
+  useEffect(() => {
+    const checkIfSaved = async () => {
+      if (!currentUser) {
+        setIsSaved(false);
+        return;
+      }
+      
+      try {
+        const savedListings = await getSavedListings();
+        const isListingSaved = savedListings.some(saved => saved.id === listing.id);
+        setIsSaved(isListingSaved);
+      } catch (error) {
+        console.error('Error checking if listing is saved:', error);
+        setIsSaved(false);
+      }
+    };
+
+    checkIfSaved();
+  }, [listing.id, currentUser]);
+
+  const handleSaveToggle = async () => {
+    if (!currentUser) {
+      alert('Please sign in to save listings');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (isSaved) {
+        await unsaveListing(listing.id);
+        setIsSaved(false);
+      } else {
+        await saveListing(listing.id);
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      alert('Failed to save listing. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteListing = async () => {
+    if (!confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await deleteListing(listing.id);
+      alert('Listing deleted successfully!');
+      onClose(); // Close the modal
+      window.location.reload(); // Refresh to update the listings
+    } catch (error) {
+      console.error('Error deleting listing:', error);
+      alert('Failed to delete listing. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Just now';
@@ -240,21 +307,41 @@ export default function ListingDetailModal({ listing, currentUser, onClose, onMe
                   </svg>
                   Contact Seller
                 </button>
-                <button style={styles.favoriteButton}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={styles.favoriteIcon}>
+                <button 
+                  style={{
+                    ...styles.favoriteButton,
+                    backgroundColor: isSaved ? '#000000' : 'transparent',
+                    color: isSaved ? '#ffffff' : '#000000'
+                  }}
+                  onClick={handleSaveToggle}
+                  disabled={saving}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill={isSaved ? 'currentColor' : 'none'} style={styles.favoriteIcon}>
                     <path d="M20.84 4.61C20.3292 4.099 19.7228 3.69364 19.0554 3.41708C18.3879 3.14052 17.6725 2.99817 16.95 2.99817C16.2275 2.99817 15.5121 3.14052 14.8446 3.41708C14.1772 3.69364 13.5708 4.099 13.06 4.61L12 5.67L10.94 4.61C9.9083 3.5783 8.50903 2.9987 7.05 2.9987C5.59096 2.9987 4.19169 3.5783 3.16 4.61C2.1283 5.6417 1.5487 7.04097 1.5487 8.5C1.5487 9.95903 2.1283 11.3583 3.16 12.39L12 21.23L20.84 12.39C21.351 11.8792 21.7563 11.2728 22.0329 10.6053C22.3095 9.93789 22.4518 9.22248 22.4518 8.5C22.4518 7.77752 22.3095 7.06211 22.0329 6.39467C21.7563 5.72723 21.351 5.1208 20.84 4.61V4.61Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  Save
+                  {saving ? 'Saving...' : (isSaved ? 'Saved' : 'Save')}
                 </button>
               </div>
             ) : (
-              <div style={styles.ownListingNotice}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={styles.infoIcon}>
-                  <circle cx="12" cy="12" r="10" stroke="#666666" strokeWidth="2"/>
-                  <line x1="12" y1="16" x2="12" y2="12" stroke="#666666" strokeWidth="2"/>
-                  <line x1="12" y1="8" x2="12.01" y2="8" stroke="#666666" strokeWidth="2"/>
-                </svg>
-                This is your listing
+              <div style={styles.ownListingSection}>
+                <div style={styles.ownListingNotice}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={styles.infoIcon}>
+                    <circle cx="12" cy="12" r="10" stroke="#666666" strokeWidth="2"/>
+                    <line x1="12" y1="16" x2="12" y2="12" stroke="#666666" strokeWidth="2"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8" stroke="#666666" strokeWidth="2"/>
+                  </svg>
+                  This is your listing
+                </div>
+                <button
+                  onClick={handleDeleteListing}
+                  disabled={deleting}
+                  style={styles.deleteListingButton}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={styles.deleteIcon}>
+                    <path d="M3 6H5H21M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.4477 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19ZM10 11V17M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {deleting ? 'Deleting...' : 'Delete Listing'}
+                </button>
               </div>
             )}
           </div>
@@ -626,6 +713,11 @@ const styles = {
   favoriteIcon: {
     flexShrink: 0
   },
+  ownListingSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem'
+  },
   ownListingNotice: {
     display: 'flex',
     alignItems: 'center',
@@ -639,6 +731,25 @@ const styles = {
     border: '1px solid #e5e5e5'
   },
   infoIcon: {
+    flexShrink: 0
+  },
+  deleteListingButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#dc2626',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '0.9375rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    width: '100%'
+  },
+  deleteIcon: {
     flexShrink: 0
   }
 };

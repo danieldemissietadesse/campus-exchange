@@ -93,9 +93,10 @@ describe('API utilities', () => {
   test('handles API errors', async () => {
     fetch.mockResolvedValue({
       ok: false,
-      status: 400
+      status: 400,
+      json: () => Promise.resolve({ error: 'Bad Request' })
     })
 
-    await expect(apiGet('/test')).rejects.toThrow('GET /test → 400')
+    await expect(apiGet('/test')).rejects.toThrow('Bad Request')
   })
 })

@@ -18,9 +18,10 @@ admin.initializeApp({
 });
 
 /* ─── 2. Routers & middleware ──────────────────────────────────── */
-const auth            = require('./middleware/auth');
-const listingsRouter  = require('./routes/listings');
-const messagesRouter  = require('./routes/messages');
+const auth                = require('./middleware/auth');
+const listingsRouter      = require('./routes/listings');
+const messagesRouter      = require('./routes/messages');
+const notificationsRouter = require('./routes/notifications');
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.get('/api/test-firebase', async (_, res, next) => {
 /* protected API routes */
 app.use('/api/listings', auth, listingsRouter);
 app.use('/api/messages', auth, messagesRouter);
+app.use('/api/notifications', auth, notificationsRouter);
 
 /* error handler */
 app.use((err, _req, res, _next) => {

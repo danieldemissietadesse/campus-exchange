@@ -141,3 +141,19 @@ export async function markMessageAsRead(id) {
 export async function getConversation(listingId, otherUserId) {
   return apiGet(`/messages/conversations/${listingId}?otherUserId=${otherUserId}`);
 }
+
+export async function deleteListing(id) {
+  return apiSend("DELETE", `/listings/${id}`, {});
+}
+
+export async function saveListing(id) {
+  return apiSend("POST", `/listings/${id}/save`, {});
+}
+
+export async function unsaveListing(id) {
+  return apiSend("DELETE", `/listings/${id}/save`, {});
+}
+
+export async function getSavedListings() {
+  return apiGet("/listings/saved");
+}

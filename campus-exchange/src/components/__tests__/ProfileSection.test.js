@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import ProfileSection from '@/components/ProfileSection'
 
 jest.mock('@/lib/api', () => ({
-  deleteListing: jest.fn()
+  deleteListing: jest.fn(),
+  getSavedListings: jest.fn().mockResolvedValue([])
 }))
 
 const mockUser = {
@@ -88,5 +89,58 @@ describe('ProfileSection', () => {
     })
 
     confirmSpy.mockRestore()
+  })
+
+  test('loads dark mode from localStorage on mount', () => {
+    localStorage.getItem.mockReturnValue('true')
+    
+    render(<ProfileSection user={mockUser} userListings={mockUserListings} />)
+    
+    expect(localStorage.getItem).toHaveBeenCalledWith('darkMode')
+  })
+
+  test('toggles dark mode setting', async () => {
+    const user = userEvent.setup()
+    render(<ProfileSection user={mockUser} userListings={mockUserListings} />)
+    
+    // Navigate to settings tab
+    const settingsTab = screen.getByText('Settings')
+    await user.click(settingsTab)
+    
+    // Find and click dark mode toggle
+    const darkModeToggle = screen.getByLabelText(/dark mode/i)
+    expect(darkModeToggle).toBeInTheDocument()
+    
+    await user.click(darkModeToggle)
+    
+    // Check that localStorage was called
+    expect(localStorage.setItem).toHaveBeenCalledWith('darkMode', 'true')
+  })
+
+  test('displays settings tab correctly', async () => {
+    const user = userEvent.setup()
+    render(<ProfileSection user={mockUser} userListings={mockUserListings} />)
+    
+    // Click settings tab
+    const settingsTab = screen.getByText('Settings')
+    await user.click(settingsTab)
+    
+    // Check that all settings are visible
+    expect(screen.getByText('Account Settings')).toBeInTheDocument()
+    expect(screen.getByText('Email Notifications')).toBeInTheDocument()
+    expect(screen.getByText('Profile Visibility')).toBeInTheDocument()
+    expect(screen.getByText('Dark Mode')).toBeInTheDocument()
+  })
+
+  test('displays saved listings tab', async () => {
+    const user = userEvent.setup()
+    render(<ProfileSection user={mockUser} userListings={mockUserListings} />)
+    
+    // Click saved tab
+    const savedTab = screen.getByText('Saved')
+    await user.click(savedTab)
+    
+    // Should show empty state initially
+    expect(screen.getByText('No saved listings')).toBeInTheDocument()
   })
 })

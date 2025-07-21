@@ -1,6 +1,6 @@
 // src/components/MessagesList.js
 import { useState, useEffect } from 'react';
-import { markMessageAsRead } from '@/lib/api';
+import MessageConversation from './MessageConversation';
 
 export default function MessagesList({ messages, currentUserId }) {
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -20,6 +20,7 @@ export default function MessagesList({ messages, currentUserId }) {
           id: conversationKey,
           listingId: message.listingId,
           listingTitle: message.listingTitle || 'Unknown Item',
+          listingImageUrl: message.listingImageUrl || null,
           otherUserId,
           otherUserEmail: otherUserEmail || 'Unknown User',
           messages: [],
@@ -53,13 +54,6 @@ export default function MessagesList({ messages, currentUserId }) {
     setConversations(conversationList);
   }, [messages, currentUserId]);
 
-  const handleMarkAsRead = async (messageId) => {
-    try {
-      await markMessageAsRead(messageId);
-    } catch (error) {
-      console.error('Error marking message as read:', error);
-    }
-  };
 
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
@@ -135,98 +129,69 @@ export default function MessagesList({ messages, currentUserId }) {
               style={styles.conversationCard}
               onClick={() => setSelectedConversation(conversation)}
             >
-              <div style={styles.conversationHeader}>
-                <div style={styles.conversationInfo}>
-                  <h3 style={styles.conversationTitle}>
-                    {conversation.listingTitle}
-                  </h3>
-                  <p style={styles.conversationParticipant}>
-                    with {getDisplayName(conversation.otherUserEmail)}
-                  </p>
-                </div>
-                <div style={styles.conversationMeta}>
-                  {conversation.unreadCount > 0 && (
-                    <span style={styles.unreadBadge}>
-                      {conversation.unreadCount}
-                    </span>
+              <div style={styles.conversationContent}>
+                {/* Listing Image */}
+                <div style={styles.listingImageContainer}>
+                  {conversation.listingImageUrl ? (
+                    <img 
+                      src={conversation.listingImageUrl} 
+                      alt={conversation.listingTitle}
+                      style={styles.listingImage}
+                    />
+                  ) : (
+                    <div style={styles.placeholderImage}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15V19C21 20.1 20.1 21 19 21H5C3.9 21 3 20.1 3 19V5C3 3.9 3.9 3 5 3H19C20.1 3 21 3.9 21 5V9" stroke="#ccc" strokeWidth="1.5"/>
+                        <circle cx="9" cy="9" r="3" stroke="#ccc" strokeWidth="1.5"/>
+                        <path d="M21 15L17 11L5 23" stroke="#ccc" strokeWidth="1.5"/>
+                      </svg>
+                    </div>
                   )}
-                  <span style={styles.timestamp}>
-                    {formatTime(conversation.lastMessage?.createdAt)}
-                  </span>
+                </div>
+
+                {/* Conversation Details */}
+                <div style={styles.conversationDetails}>
+                  <div style={styles.conversationHeader}>
+                    <div style={styles.conversationInfo}>
+                      <h3 style={styles.conversationTitle}>
+                        {conversation.listingTitle}
+                      </h3>
+                      <p style={styles.conversationParticipant}>
+                        with {getDisplayName(conversation.otherUserEmail)}
+                      </p>
+                    </div>
+                    <div style={styles.conversationMeta}>
+                      {conversation.unreadCount > 0 && (
+                        <span style={styles.unreadBadge}>
+                          {conversation.unreadCount}
+                        </span>
+                      )}
+                      <span style={styles.timestamp}>
+                        {formatTime(conversation.lastMessage?.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {conversation.lastMessage && (
+                    <div style={styles.lastMessage}>
+                      <span style={styles.lastMessageSender}>
+                        {conversation.lastMessage.senderId === currentUserId ? 'You: ' : ''}
+                      </span>
+                      <span style={styles.lastMessageText}>
+                        {truncateMessage(conversation.lastMessage.message || conversation.lastMessage.content)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
-              
-              {conversation.lastMessage && (
-                <div style={styles.lastMessage}>
-                  <span style={styles.lastMessageSender}>
-                    {conversation.lastMessage.senderId === currentUserId ? 'You: ' : ''}
-                  </span>
-                  <span style={styles.lastMessageText}>
-                    {truncateMessage(conversation.lastMessage.message || conversation.lastMessage.content)}
-                  </span>
-                </div>
-              )}
             </div>
           ))}
         </div>
       ) : (
-        <div style={styles.conversationView}>
-          <div style={styles.conversationViewHeader}>
-            <button
-              onClick={() => setSelectedConversation(null)}
-              style={styles.backButton}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M19 12H5M12 19L5 12L12 5" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            <div style={styles.conversationViewInfo}>
-              <h2 style={styles.conversationViewTitle}>
-                {selectedConversation.listingTitle}
-              </h2>
-              <p style={styles.conversationViewParticipant}>
-                with {getDisplayName(selectedConversation.otherUserEmail)}
-              </p>
-            </div>
-          </div>
-
-          <div style={styles.messagesList}>
-            {selectedConversation.messages
-              .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
-              .map((message) => (
-                <div
-                  key={message.id}
-                  style={{
-                    ...styles.messageItem,
-                    ...(message.senderId === currentUserId ? styles.messageItemSent : styles.messageItemReceived)
-                  }}
-                >
-                  <div
-                    style={{
-                      ...styles.messageBubble,
-                      ...(message.senderId === currentUserId ? styles.messageBubbleSent : styles.messageBubbleReceived)
-                    }}
-                  >
-                    <p style={styles.messageText}>
-                      {message.message || message.content}
-                    </p>
-                    <span style={styles.messageTime}>
-                      {formatTime(message.createdAt)}
-                    </span>
-                  </div>
-                  
-                  {!message.read && message.recipientId === currentUserId && (
-                    <button
-                      onClick={() => handleMarkAsRead(message.id)}
-                      style={styles.markReadButton}
-                    >
-                      Mark as read
-                    </button>
-                  )}
-                </div>
-              ))}
-          </div>
-        </div>
+        <MessageConversation 
+          conversation={selectedConversation}
+          onBack={() => setSelectedConversation(null)}
+        />
       )}
     </div>
   );
@@ -288,6 +253,37 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s ease'
   },
+  conversationContent: {
+    display: 'flex',
+    gap: '1rem',
+    alignItems: 'flex-start'
+  },
+  listingImageContainer: {
+    width: '60px',
+    height: '60px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
+    flexShrink: 0,
+    border: '1px solid #e5e5e5'
+  },
+  listingImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover'
+  },
+  placeholderImage: {
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9f9f9'
+  },
+  conversationDetails: {
+    flex: 1,
+    minWidth: 0
+  },
   conversationHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -339,100 +335,6 @@ const styles = {
     fontWeight: '500'
   },
   lastMessageText: {
-    fontWeight: '400'
-  },
-  conversationView: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #f0f0f0',
-    borderRadius: '12px',
-    overflow: 'hidden'
-  },
-  conversationViewHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-    padding: '1.25rem',
-    borderBottom: '1px solid #f0f0f0',
-    backgroundColor: '#fafafa'
-  },
-  backButton: {
-    background: 'none',
-    border: 'none',
-    padding: '0.5rem',
-    cursor: 'pointer',
-    borderRadius: '6px',
-    transition: 'background-color 0.2s ease',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  conversationViewInfo: {
-    flex: 1
-  },
-  conversationViewTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '500',
-    margin: '0 0 0.25rem 0',
-    color: '#000000',
-    letterSpacing: '-0.01em'
-  },
-  conversationViewParticipant: {
-    fontSize: '0.875rem',
-    color: '#666666',
-    margin: 0,
-    fontWeight: '400'
-  },
-  messagesList: {
-    padding: '1.25rem',
-    maxHeight: '500px',
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem'
-  },
-  messageItem: {
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  messageItemSent: {
-    alignItems: 'flex-end'
-  },
-  messageItemReceived: {
-    alignItems: 'flex-start'
-  },
-  messageBubble: {
-    maxWidth: '70%',
-    padding: '0.875rem 1rem',
-    borderRadius: '12px',
-    position: 'relative'
-  },
-  messageBubbleSent: {
-    backgroundColor: '#000000',
-    color: '#ffffff'
-  },
-  messageBubbleReceived: {
-    backgroundColor: '#f5f5f5',
-    color: '#000000'
-  },
-  messageText: {
-    fontSize: '0.9375rem',
-    margin: '0 0 0.5rem 0',
-    lineHeight: '1.4',
-    fontWeight: '400'
-  },
-  messageTime: {
-    fontSize: '0.75rem',
-    opacity: 0.7,
-    fontWeight: '400'
-  },
-  markReadButton: {
-    background: 'none',
-    border: 'none',
-    color: '#666666',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    padding: '0.25rem 0',
-    marginTop: '0.25rem',
     fontWeight: '400'
   }
 };

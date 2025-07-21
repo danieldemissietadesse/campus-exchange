@@ -12,8 +12,14 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Dark mode support */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.dark-override) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }

@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const senderId    = req.userUid;
   const senderEmail = req.decodedToken?.email;
-  const { recipientId, message, listingId, listingTitle, recipientEmail } = req.body;
+  const { recipientId, message, listingId, listingTitle, recipientEmail, listingImageUrl } = req.body;
 
   if (!recipientId || !message || !senderEmail) {
     return res.status(400).json({ error: 'recipientId, message, and senderEmail are required' });
@@ -48,6 +48,7 @@ router.post('/', async (req, res) => {
       recipientEmail: recipientEmail || '', // Ensure recipientEmail exists
       listingId   : listingId    || null,
       listingTitle: listingTitle || '',
+      listingImageUrl: listingImageUrl || null,
       message,
       read        : false,
       createdAt   : admin.firestore.FieldValue.serverTimestamp()
@@ -60,6 +61,26 @@ router.post('/', async (req, res) => {
     // Notify connected sender and recipient via SSE
     notifyUser(senderId, newMessage);
     notifyUser(recipientId, newMessage);
+
+    // Send notification if recipient has notifications enabled
+    try {
+      await db.collection('notifications').add({
+        senderId,
+        recipientId,
+        type: 'message',
+        title: `New message about ${listingTitle || 'your listing'}`,
+        message: `${senderEmail} sent you a message: "${message.substring(0, 100)}${message.length > 100 ? '...' : ''}"`,
+        listingId: listingId || null,
+        metadata: { messageId: ref.id },
+        read: false,
+        emailSent: false, // Would be true when actual email is sent
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`Notification sent for message from ${senderEmail} to ${recipientId}`);
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+      // Don't fail the message creation if notification fails
+    }
 
     console.log(`📤 Message sent from ${senderEmail} to ${recipientEmail}`);
     res.status(201).json(newMessage);

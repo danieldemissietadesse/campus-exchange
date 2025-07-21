@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { auth } from "./firebaseConfig";
+import { auth, initAuthPersistence } from "./firebaseConfig";
 import { onAuthStateChanged, reload } from "firebase/auth";
 import { streamListings, getMessages, streamMessages } from "@/lib/api";
 
@@ -32,10 +32,29 @@ export default function HomePage() {
 
   const categories = ["All", "Textbooks", "Electronics", "Furniture", "Clothing", "Dorm Supplies", "Other"];
 
+  // Initialize dark mode from localStorage on mount
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode === 'true') {
+      document.documentElement.classList.add('dark');
+    } else if (savedDarkMode === 'false') {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
   // --- useEffect for Authentication ---
   useEffect(() => {
+    let cancelled = false;
+    
+    // Initialize auth persistence for session-based auth (allows multiple users in different tabs)
+    initAuthPersistence();
+    
     const unsub = onAuthStateChanged(auth, async (u) => {
+      if (cancelled) return;
+      
+      console.log('Auth state changed:', u ? u.email : 'no user');
       setLoading(true);
+      
       if (!u) {
         setUser(null);
         setAuthed(false);
@@ -43,35 +62,68 @@ export default function HomePage() {
         return;
       }
       
-      await reload(u);
-      setUser(u);
-      
-      const testUsers = [
-        'testuser@wit.edu', 'testbuyer@wit.edu', 'testseller@wit.edu',
-        'testuser1@wit.edu', 'testuser2@wit.edu', 'demissied@wit.edu'
-      ];
-      
-      const isVerified = u.emailVerified || testUsers.includes(u.email);
-      setAuthed(isVerified);
-      setLoading(false);
+      try {
+        await reload(u);
+        if (cancelled) return;
+        
+        setUser(u);
+        
+        const testUsers = [
+          'testuser@wit.edu', 'testbuyer@wit.edu', 'testseller@wit.edu',
+          'testuser1@wit.edu', 'testuser2@wit.edu', 'demissied@wit.edu'
+        ];
+        
+        const isVerified = u.emailVerified || testUsers.includes(u.email);
+        setAuthed(isVerified);
+        console.log('User verified:', isVerified);
+      } catch (error) {
+        console.error('Auth error:', error);
+        if (!cancelled) {
+          setUser(null);
+          setAuthed(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     });
-    return () => unsub();
+    
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
   // --- useEffect for Data Fetching and Real-time Streams ---
   useEffect(() => {
     if (!authed) return;
 
+    console.log('Setting up data streams...');
+    let cancelled = false;
+
     // Stream listings
-    const unsubListings = streamListings(setListings);
+    const unsubListings = streamListings((newListings) => {
+      if (!cancelled) {
+        console.log('Received listings:', newListings.length);
+        setListings(newListings);
+      }
+    });
     
     // Fetch initial messages
     getMessages()
-      .then(initialMessages => setMessages(initialMessages))
+      .then(initialMessages => {
+        if (!cancelled) {
+          console.log('Received initial messages:', initialMessages.length);
+          setMessages(initialMessages);
+        }
+      })
       .catch(err => console.error("Failed to fetch initial messages:", err));
       
     // Listen for new incoming messages
     const handleNewMessage = (newMessage) => {
+      if (cancelled) return;
+      
       setMessages(prevMessages => {
         // Avoid adding duplicates
         if (prevMessages.some(msg => msg.id === newMessage.id)) {
@@ -86,6 +138,8 @@ export default function HomePage() {
     
     // Cleanup function
     return () => {
+      cancelled = true;
+      console.log('Cleaning up data streams...');
       unsubListings();
       unsubMessages();
     };
@@ -217,6 +271,7 @@ export default function HomePage() {
           <ProfileSection 
             user={user}
             userListings={userListings}
+            onListingSelect={setSelectedListing}
           />
         )}
 

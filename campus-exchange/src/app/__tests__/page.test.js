@@ -13,7 +13,8 @@ jest.mock('@/app/firebaseConfig', () => ({
       }
     },
     signOut: jest.fn()
-  }
+  },
+  initAuthPersistence: jest.fn().mockResolvedValue()
 }))
 
 jest.mock('firebase/auth', () => ({
@@ -61,7 +62,18 @@ jest.mock('@/lib/api', () => ({
       }
     ])
     return jest.fn()
-  })
+  }),
+  getMessages: jest.fn().mockResolvedValue([
+    {
+      id: 'msg1',
+      senderId: 'other-user',
+      recipientId: 'test-uid',
+      message: 'Hi, interested in your item',
+      read: false,
+      listingTitle: 'Test Item',
+      createdAt: { seconds: Date.now() / 1000 }
+    }
+  ])
 }))
 
 // Mock components

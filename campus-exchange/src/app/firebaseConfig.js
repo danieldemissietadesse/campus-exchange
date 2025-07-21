@@ -16,14 +16,20 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Auth with session-based persistence (tab-specific)
+// Initialize Firebase Auth
 export const auth = getAuth(app);
 
 // Set persistence to session-based (each tab maintains its own session)
 // This prevents authentication state from being shared across tabs
-setPersistence(auth, browserSessionPersistence).catch((error) => {
-  console.error('Error setting auth persistence:', error);
-});
+// Note: We'll set this in the component after auth is ready
+export const initAuthPersistence = async () => {
+  try {
+    await setPersistence(auth, browserSessionPersistence);
+    console.log('Auth persistence set to session-based');
+  } catch (error) {
+    console.error('Error setting auth persistence:', error);
+  }
+};
 
 // Initialize Firestore
 export const db = getFirestore(app);

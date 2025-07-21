@@ -14,6 +14,7 @@ import {
   or,
   getDocs
 } from 'firebase/firestore';
+import { markMessageAsRead } from '@/lib/api';
 
 export default function MessageConversation({ conversation, onBack }) {
   const { otherUserEmail, otherUserId, listingId, listingTitle } = conversation;
@@ -99,6 +100,25 @@ export default function MessageConversation({ conversation, onBack }) {
     scrollToBottom();
   }, [messages]);
 
+  // Mark unread messages as read when conversation opens
+  useEffect(() => {
+    if (!currentUser || messages.length === 0) return;
+
+    const unreadMessages = messages.filter(message => 
+      !message.read && 
+      message.recipientId === currentUser.uid
+    );
+
+    // Mark each unread message as read
+    unreadMessages.forEach(async (message) => {
+      try {
+        await markMessageAsRead(message.id);
+      } catch (error) {
+        console.error('Error marking message as read:', error);
+      }
+    });
+  }, [messages, currentUser]);
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
@@ -141,6 +161,49 @@ export default function MessageConversation({ conversation, onBack }) {
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + 
              date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
+  };
+
+  const formatDateHeader = (timestamp) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp.seconds * 1000);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === now.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+  };
+
+  const groupMessagesByDate = (messages) => {
+    const groups = [];
+    let currentGroup = null;
+    
+    messages.forEach((message) => {
+      const messageDate = message.createdAt ? new Date(message.createdAt.seconds * 1000).toDateString() : null;
+      
+      if (!currentGroup || currentGroup.date !== messageDate) {
+        currentGroup = {
+          date: messageDate,
+          timestamp: message.createdAt,
+          messages: [message]
+        };
+        groups.push(currentGroup);
+      } else {
+        currentGroup.messages.push(message);
+      }
+    });
+    
+    return groups;
   };
 
   const styles = {
@@ -275,6 +338,22 @@ export default function MessageConversation({ conversation, onBack }) {
       alignItems: 'center',
       height: '100%',
       color: '#6b7280'
+    },
+    dateHeader: {
+      textAlign: 'center',
+      margin: '1.5rem 0 1rem 0',
+      position: 'relative'
+    },
+    dateHeaderText: {
+      backgroundColor: '#ffffff',
+      color: '#6b7280',
+      fontSize: '0.75rem',
+      fontWeight: '500',
+      padding: '0.25rem 0.75rem',
+      borderRadius: '12px',
+      border: '1px solid #e5e7eb',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px'
     }
   };
 
@@ -313,30 +392,42 @@ export default function MessageConversation({ conversation, onBack }) {
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
-          messages.map((message) => {
-            const isSent = message.type === 'sent';
-            return (
-              <div 
-                key={message.id} 
-                style={{
-                  ...styles.message,
-                  ...(isSent ? styles.sentMessage : styles.receivedMessage)
-                }}
-              >
-                <div 
-                  style={{
-                    ...styles.messageBubble,
-                    ...(isSent ? styles.sentBubble : styles.receivedBubble)
-                  }}
-                >
-                  {message.message}
-                </div>
-                <div style={styles.messageTime}>
-                  {formatTime(message.createdAt)}
-                </div>
+          groupMessagesByDate(messages).map((group, groupIndex) => (
+            <div key={groupIndex}>
+              {/* Date Header */}
+              <div style={styles.dateHeader}>
+                <span style={styles.dateHeaderText}>
+                  {formatDateHeader(group.timestamp)}
+                </span>
               </div>
-            );
-          })
+              
+              {/* Messages in this date group */}
+              {group.messages.map((message) => {
+                const isSent = message.type === 'sent';
+                return (
+                  <div 
+                    key={message.id} 
+                    style={{
+                      ...styles.message,
+                      ...(isSent ? styles.sentMessage : styles.receivedMessage)
+                    }}
+                  >
+                    <div 
+                      style={{
+                        ...styles.messageBubble,
+                        ...(isSent ? styles.sentBubble : styles.receivedBubble)
+                      }}
+                    >
+                      {message.message}
+                    </div>
+                    <div style={styles.messageTime}>
+                      {formatTime(message.createdAt)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))
         )}
         <div ref={messagesEndRef} />
       </div>
