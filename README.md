@@ -1,88 +1,63 @@
 # Campus Exchange
 
-Campus Exchange is a marketplace demo built with Next.js for the frontend and an Express
-backend that stores data in Firebase. The project uses Firebase Authentication,
-Firestore and Storage, and Tailwind CSS for styling.
+A campus marketplace prototype for posting items, browsing listings, saving items, and messaging sellers. Built with Next.js, React, Express, and Firebase.
 
-## Prerequisites
+The application includes email authentication, listing images, search and pagination, saved listings, conversations, and notifications. The frontend uses Firebase directly for some operations and an Express API for others; [architecture notes](docs/architecture.md) explain the split.
 
-- **Node.js 18+** and npm
-- A Firebase project with service account credentials
+**Status:** prototype. The existing frontend test suite has failures, and the backend integration tests require a separate Firebase test project. See [validation and limitations](docs/status.md).
 
-## Setup
+## Run locally
 
-Clone the repository and install dependencies:
+Use Node.js 22 and npm. You will need a Firebase project with Authentication, Firestore, and Storage configured.
 
-```bash
-# clone and enter the project
-git clone <repository-url>
-cd campus-exchange/campus-exchange
-
-# frontend dependencies
-npm install
-
-# backend dependencies
-cd backend
-npm install
-cd ..
+```sh
+git clone https://github.com/danieldemissietadesse/campus-exchange.git
+cd campus-exchange
+npm ci
+npm --prefix backend ci
+cp .env.example .env.local
+cp backend/.env.example backend/.env
 ```
 
-### Environment variables
+Fill in the environment files using the [configuration guide](docs/configuration.md), then start both processes:
 
-Create `.env.local` in the project root with the API URL used by the frontend:
-
-```
-NEXT_PUBLIC_API_URL=http://localhost:5001/api
+```sh
+npm run dev:both
 ```
 
-Create `backend/.env` for the Express server. Fill in the Firebase values from
-your service account:
+The frontend runs at `http://localhost:3000`; the API runs at `http://localhost:5001`. `GET /api/health` checks the API process.
 
-```
-PORT=5001
-FRONTEND_URL=http://localhost:3000
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CLIENT_EMAIL=your-service-account-email
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
-FIREBASE_DATABASE_URL=https://your-project-id.firebaseio.com
-FIREBASE_STORAGE_BUCKET=your-project-id.appspot.com
-```
+## Repository layout
 
-## Running the application
-
-Open two terminals.
-
-1. **Frontend**
-
-   ```bash
-   npm run dev
-   ```
-
-   The app will be available at `http://localhost:3000`.
-
-2. **Backend**
-
-   ```bash
-   cd backend
-   npm run dev
-   ```
-
-   The API will listen on `http://localhost:5001`.
-
-## Testing
-
-The backend includes Jest tests. Run them with:
-
-```bash
-cd backend
-npm test
+```text
+src/app/            Pages, layout, and Firebase client setup
+src/components/     Authentication, listings, profiles, and messaging UI
+src/lib/            API client and Firebase data access
+backend/            Express API, middleware, and integration tests
+tests/systems/      Playwright browser tests
+docs/               Configuration, architecture, and validation notes
+public/             Static assets
 ```
 
-## Deployment
+Dependencies, build output, logs, Firebase caches, and test reports are generated locally and are not source files.
 
-Use the provided `deploy` script to build and deploy to Firebase Hosting:
+## Development commands
 
-```bash
-npm run deploy
-```
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the frontend |
+| `npm --prefix backend run dev` | Start the API |
+| `npm run dev:both` | Start both processes |
+| `npm test -- --runInBand` | Run frontend Jest tests with mocks |
+| `npm run lint` | Run the existing Next.js lint check |
+| `npm run build` | Build the static frontend export in `out/` |
+| `npm --prefix backend test` | Run integration tests against the configured Firebase project |
+| `npm run test:systems` | Start the app and run Playwright scenarios |
 
+For backend or browser tests, use a dedicated disposable Firebase project. Those tests can create and delete data. Install the Playwright browser with `npx playwright install chromium` before browser tests.
+
+## Working on the project
+
+Keep changes focused and include the behavior you changed, how you checked it, and any remaining limitations in the pull request. Preserve the existing test coverage when updating UI expectations. Do not commit credentials or generated files.
+
+Deployment settings in `firebase.json` describe Firebase Hosting. Select your own project with the Firebase CLI and configure the backend separately before deploying. The repository is not a production deployment template.

@@ -1,0 +1,32 @@
+# Dependencies at any depth, including backend/
+node_modules/
+.pnp.*
+.yarn/
+
+# Generated application output
+.next/
+out/
+build/
+dist/
+.firebase/
+.vercel/
+
+# Test output
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Local environment and credentials; examples contain placeholders only
+.env
+.env.*
+!.env.example
+*.pem
+*firebase-adminsdk*.json
+service-account*.json
+
+# Local logs and tooling
+*.log
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
